@@ -22,12 +22,17 @@ const RideLayout = ({
   const bottomSheetRef = useRef<BottomSheet>(null);
 
   return (
-    <GestureHandlerRootView className="flex-1 bg-neutral-50">
-      <View className="flex-1 bg-primary-500">
-        <View className="relative h-72 rounded-b-[42px] bg-primary-500 px-5 pb-6 pt-16 shadow-lg shadow-primary-500/20">
+    <GestureHandlerRootView className="flex-1 bg-white">
+      <View className="flex-1">
+
+        {/* Full-screen Map */}
+        <Map />
+
+        {/* Floating Header */}
+        <View className="absolute top-14 left-5 right-5 flex-row items-center z-50">
           <TouchableOpacity
             onPress={() => router.back()}
-            className="w-11 h-11 bg-white/95 rounded-2xl items-center justify-center shadow-sm shadow-black/10"
+            className="w-11 h-11 bg-white rounded-full items-center justify-center shadow-md"
           >
             <Image
               source={icons.backArrow}
@@ -36,39 +41,52 @@ const RideLayout = ({
             />
           </TouchableOpacity>
 
-          <Text className="mt-4 text-2xl font-JakartaBold text-white">
-            {title || "Go Back"}
-          </Text>
+          <View className="ml-4 bg-white rounded-full px-4 py-2 shadow-md">
+            <Text className="text-lg font-JakartaBold text-neutral-900">
+              {title}
+            </Text>
+          </View>
         </View>
 
-        <Map />
+        {/* Bottom Sheet */}
         <BottomSheet
           ref={bottomSheetRef}
-          snapPoints={snapPoints || ["42%", "84%"]}
+          snapPoints={snapPoints ?? ["42%", "84%"]}
           index={0}
-          backgroundStyle={{ backgroundColor: "#F8FAFC" }}
-          handleIndicatorStyle={{ backgroundColor: "#CBD5E1" }}
+          backgroundStyle={{
+            backgroundColor: "#F8FAFC",
+            borderTopLeftRadius: 30,
+            borderTopRightRadius: 30,
+          }}
+          handleIndicatorStyle={{
+            backgroundColor: "#CBD5E1",
+            width: 70,
+          }}
         >
           {title === "Choose a Rider" ? (
             <BottomSheetView
               style={{
                 flex: 1,
-                padding: 20,
+                paddingHorizontal: 20,
+                paddingTop: 10,
+                paddingBottom: 30,
               }}
             >
               {children}
             </BottomSheetView>
           ) : (
             <BottomSheetScrollView
-              style={{
-                flex: 1,
-                padding: 20,
+              contentContainerStyle={{
+                paddingHorizontal: 20,
+                paddingTop: 10,
+                paddingBottom: 40,
               }}
             >
               {children}
             </BottomSheetScrollView>
           )}
         </BottomSheet>
+
       </View>
     </GestureHandlerRootView>
   );
