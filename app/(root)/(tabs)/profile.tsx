@@ -3,14 +3,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Linking,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -405,7 +405,7 @@ const Profile = () => {
                 />
                 <ProfileSectionCard
                   title="Payment Method"
-                  value={profileData.payment_method || "Cash"}
+                  value={profileData.payment_method || "Card / Apple Pay"}
                   icon="card"
                   onPress={() => router.push("/(root)/payment-methods")}
                 />

@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import ws from "ws";
 
 const resolveEnv = (...names: string[]) => {
   for (const name of names) {
@@ -23,7 +24,7 @@ const supabaseAnonKey = resolveEnv(
   "SUPABASE_ANON_KEY",
 );
 
-export function getSupabaseClient() {
+export function getSupabaseServerClient() {
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error("Supabase environment variables are not configured.");
   }
@@ -33,6 +34,9 @@ export function getSupabaseClient() {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
+    },
+    realtime: {
+      transport: ws as unknown as typeof WebSocket,
     },
   });
 }

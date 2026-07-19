@@ -3,11 +3,8 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const methods = [
-  { name: "Visa •••• 1234", icon: "card" },
-  { name: "Mastercard", icon: "card" },
-  { name: "Cash", icon: "cash" },
+  { name: "Card", icon: "card" },
   { name: "Apple Pay", icon: "logo-apple" },
-  { name: "Google Pay", icon: "logo-google" },
 ];
 
 const PaymentMethods = () => {

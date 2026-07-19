@@ -31,6 +31,9 @@ const Payment = ({
   const { userId } = useAuth();
   const [success, setSuccess] = useState<boolean>(false);
 
+  const safeName = fullName || email?.split("@")[0] || "Guest";
+  const safeEmail = email || "guest@example.com";
+
   const openPaymentSheet = async () => {
     try {
       await initializePaymentSheet();
@@ -40,6 +43,26 @@ const Payment = ({
       if (error) {
         Alert.alert(`Error code: ${error.code}`, error.message);
       } else {
+        await fetchAPI("/(api)/ride/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            origin_address: userAddress,
+            destination_address: destinationAddress,
+            origin_latitude: userLatitude,
+            origin_longitude: userLongitude,
+            destination_latitude: destinationLatitude,
+            destination_longitude: destinationLongitude,
+            ride_time: rideTime.toFixed(0),
+            fare_price: parseInt(amount) * 100,
+            payment_status: "paid",
+            driver_id: driverId,
+            user_id: userId ?? "guest",
+          }),
+        });
+
         setSuccess(true);
       }
     } catch (err: any) {
@@ -50,89 +73,38 @@ const Payment = ({
 
   const initializePaymentSheet = async () => {
     try {
-      const { error } = await initPaymentSheet({
-        merchantDisplayName: "Example, Inc.",
-        intentConfiguration: {
-          mode: {
-            amount: parseInt(amount) * 100,
-            currencyCode: "usd",
-          },
-          confirmHandler: async (
-            paymentMethod,
-            shouldSavePaymentMethod,
-            intentCreationCallback,
-          ) => {
-            const creationResponse = await fetchAPI("/(api)/(stripe)/create", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                name: fullName || email.split("@")[0],
-                email: email,
-                amount: amount,
-                paymentMethodId: paymentMethod.id,
-              }),
-            });
-
-            if (creationResponse?.error) {
-              throw new Error(creationResponse.error);
-            }
-
-            const { paymentIntent, customer } = creationResponse;
-
-            if (!paymentIntent?.client_secret) {
-              throw new Error("Stripe payment intent creation failed.");
-            }
-
-            const payResponse = await fetchAPI("/(api)/(stripe)/pay", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                payment_method_id: paymentMethod.id,
-                payment_intent_id: paymentIntent.id,
-                customer_id: customer,
-                client_secret: paymentIntent.client_secret,
-              }),
-            });
-
-            if (payResponse?.error) {
-              throw new Error(payResponse.error);
-            }
-
-            const { result } = payResponse;
-            if (!result?.client_secret) {
-              throw new Error("Stripe payment confirmation failed.");
-            }
-
-            await fetchAPI("/(api)/ride/create", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                origin_address: userAddress,
-                destination_address: destinationAddress,
-                origin_latitude: userLatitude,
-                origin_longitude: userLongitude,
-                destination_latitude: destinationLatitude,
-                destination_longitude: destinationLongitude,
-                ride_time: rideTime.toFixed(0),
-                fare_price: parseInt(amount) * 100,
-                payment_status: "paid",
-                driver_id: driverId,
-                user_id: userId,
-              }),
-            });
-
-            intentCreationCallback({
-              clientSecret: result.client_secret,
-            });
-          },
+      const creationResponse = await fetchAPI("/(api)/(stripe)/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          name: safeName,
+          email: safeEmail,
+          amount: amount,
+        }),
+      });
+
+      if (creationResponse?.error) {
+        throw new Error(creationResponse.error);
+      }
+
+      const { paymentIntent, customer, ephemeralKey } = creationResponse;
+
+      if (!paymentIntent?.client_secret || !customer || !ephemeralKey?.secret) {
+        throw new Error("Stripe payment intent creation failed.");
+      }
+
+      const { error } = await initPaymentSheet({
+        merchantDisplayName: "CarpoolApp",
+        customerId: customer,
+        customerEphemeralKeySecret: ephemeralKey.secret,
+        paymentIntentClientSecret: paymentIntent.client_secret,
+        allowsDelayedPaymentMethods: false,
         returnURL: "myapp://book-ride",
+        defaultBillingDetails: {
+          email: safeEmail,
+        },
       });
 
       if (error) {

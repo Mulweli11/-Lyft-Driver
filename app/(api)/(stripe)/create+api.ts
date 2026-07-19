@@ -1,12 +1,25 @@
+import dotenv from "dotenv";
 import { Stripe } from "stripe";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+dotenv.config();
+
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+
+if (!stripeSecretKey) {
+  throw new Error("STRIPE_SECRET_KEY is not configured.");
+}
+
+const stripe = new Stripe(stripeSecretKey);
 
 export async function POST(request: Request) {
   const body = await request.json();
   const { name, email, amount } = body;
 
-  if (!name || !email || !amount) {
+  const safeName = String(name || "Guest");
+  const safeEmail = String(email || "guest@example.com");
+  const amountValue = Number(amount);
+
+  if (!Number.isFinite(amountValue) || amountValue <= 0) {
     return new Response(JSON.stringify({ error: "Missing required fields" }), {
       status: 400,
     });
@@ -14,15 +27,15 @@ export async function POST(request: Request) {
 
   let customer;
   const doesCustomerExist = await stripe.customers.list({
-    email,
+    email: safeEmail,
   });
 
   if (doesCustomerExist.data.length > 0) {
     customer = doesCustomerExist.data[0];
   } else {
     const newCustomer = await stripe.customers.create({
-      name,
-      email,
+      name: safeName,
+      email: safeEmail,
     });
 
     customer = newCustomer;
@@ -34,18 +47,26 @@ export async function POST(request: Request) {
   );
 
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: parseInt(amount) * 100,
+    amount: Math.round(amountValue * 100),
     currency: "usd",
     customer: customer.id,
-    automatic_payment_methods: {
-      enabled: true,
-      allow_redirects: "never",
+    payment_method_types: ["card"],
+    confirm: false,
+    description: `Ride booking for ${safeName}`,
+    receipt_email: safeEmail,
+    metadata: {
+      name: safeName,
+      email: safeEmail,
     },
   });
 
   return new Response(
     JSON.stringify({
-      paymentIntent: paymentIntent,
+      paymentIntent: {
+        id: paymentIntent.id,
+        client_secret: paymentIntent.client_secret,
+        amount: paymentIntent.amount,
+      },
       ephemeralKey: ephemeralKey,
       customer: customer.id,
     }),

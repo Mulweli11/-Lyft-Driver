@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function POST(request: Request) {
   try {
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
       .from("rides")
       .insert({

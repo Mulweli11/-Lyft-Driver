@@ -1,11 +1,11 @@
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function GET(request: Request, { id }: { id: string }) {
   if (!id)
     return Response.json({ error: "Missing required fields" }, { status: 400 });
 
   try {
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
       .from("rides")
       .select(
