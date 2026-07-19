@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   try {
@@ -9,24 +9,25 @@ export async function GET(request: Request) {
       return Response.json({ error: "Missing clerkId" }, { status: 400 });
     }
 
-    const sql = neon(`${process.env.DATABASE_URL}`);
+    const supabase = getSupabaseClient();
+    const { data: rides, error } = await supabase
+      .from("rides")
+      .select("*, drivers(first_name, last_name)")
+      .eq("user_id", clerkId)
+      .order("created_at", { ascending: false })
+      .limit(10);
 
-    const rides = await sql`
-      SELECT r.*, d.first_name, d.last_name
-      FROM rides r
-      LEFT JOIN drivers d ON d.id = r.driver_id
-      WHERE r.user_id = ${clerkId}
-      ORDER BY r.created_at DESC
-      LIMIT 10
-    `;
+    if (error) {
+      throw error;
+    }
 
-    const completedTrips = rides.filter((ride: any) => ride.payment_status === "paid").length;
-    const cancelledTrips = rides.filter((ride: any) => ride.payment_status === "cancelled").length;
-    const moneySpent = rides.reduce((sum: number, ride: any) => sum + Number(ride.fare_price || 0), 0);
-    const favoriteDriver = rides[0]?.first_name && rides[0]?.last_name
-      ? `${rides[0].first_name} ${rides[0].last_name}`
+    const completedTrips = (rides ?? []).filter((ride: any) => ride.payment_status === "paid").length;
+    const cancelledTrips = (rides ?? []).filter((ride: any) => ride.payment_status === "cancelled").length;
+    const moneySpent = (rides ?? []).reduce((sum: number, ride: any) => sum + Number(ride.fare_price || 0), 0);
+    const favoriteDriver = rides?.[0]?.drivers?.first_name && rides?.[0]?.drivers?.last_name
+      ? `${rides[0].drivers.first_name} ${rides[0].drivers.last_name}`
       : "Not available";
-    const lastRide = rides[0]?.destination_address || "No rides yet";
+    const lastRide = rides?.[0]?.destination_address || "No rides yet";
 
     return Response.json({
       data: {

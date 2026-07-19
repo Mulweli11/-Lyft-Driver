@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { getSupabaseClient } from "@/lib/supabase";
 
 const fallbackRequests = [
   {
@@ -29,29 +29,20 @@ const fallbackRequests = [
 
 export async function GET() {
   try {
-    if (!process.env.DATABASE_URL) {
-      return Response.json({ data: fallbackRequests });
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from("driver_requests")
+      .select(
+        "id, passenger_name, pickup_address, destination_address, pickup_latitude, pickup_longitude, destination_latitude, destination_longitude, status, price"
+      )
+      .eq("status", "waiting")
+      .limit(10);
+
+    if (error) {
+      throw error;
     }
 
-    const sql = neon(process.env.DATABASE_URL);
-    const response = await sql`
-      SELECT
-        id,
-        passenger_name,
-        pickup_address,
-        destination_address,
-        pickup_latitude,
-        pickup_longitude,
-        destination_latitude,
-        destination_longitude,
-        status,
-        price
-      FROM driver_requests
-      WHERE status = 'waiting'
-      LIMIT 10
-    `;
-
-    return Response.json({ data: response });
+    return Response.json({ data: data ?? fallbackRequests });
   } catch (error) {
     console.error("Error fetching driver requests:", error);
     return Response.json({ data: fallbackRequests });

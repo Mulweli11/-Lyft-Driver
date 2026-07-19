@@ -1,4 +1,4 @@
-import { neon } from "@neondatabase/serverless";
+import { getSupabaseClient } from "@/lib/supabase";
 
 const fallbackDrivers = [
   {
@@ -26,45 +26,36 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const email = url.searchParams.get("email");
 
-    if (!process.env.DATABASE_URL) {
-      return Response.json({ data: email ? null : fallbackDrivers });
-    }
-
-    const sql = neon(`${process.env.DATABASE_URL}`);
+    const supabase = getSupabaseClient();
 
     if (email) {
-      const response = await sql`
-        SELECT
-          id,
-          full_name,
-          email,
-          phone_number,
-          profile_image_url,
-          status,
-          verified,
-          driver_license_url,
-          government_id_url,
-          vehicle_details,
-          bank_details
-        FROM drivers
-        WHERE email = ${email}
-        LIMIT 1
-      `;
+      const { data, error } = await supabase
+        .from("drivers")
+        .select(
+          "id, full_name, email, phone_number, profile_image_url, status, verified, driver_license_url, government_id_url, vehicle_details, bank_details"
+        )
+        .eq("email", email)
+        .maybeSingle();
 
-      return Response.json({ data: response[0] ?? null });
+      if (error) {
+        throw error;
+      }
+
+      return Response.json({ data: data ?? null });
     }
 
-    const response = await sql`
-      SELECT id, first_name, last_name, profile_image_url, car_image_url, car_seats, rating
-      FROM drivers
-      WHERE status = 'approved' AND verified = true
-    `;
+    const { data, error } = await supabase
+      .from("drivers")
+      .select("id, first_name, last_name, profile_image_url, car_image_url, car_seats, rating")
+      .eq("status", "approved")
+      .eq("verified", true);
+
+    if (error) {
+      throw error;
+    }
 
     return Response.json({
-      data:
-        Array.isArray(response) && response.length > 0
-          ? response
-          : fallbackDrivers,
+      data: Array.isArray(data) && data.length > 0 ? data : fallbackDrivers,
     });
   } catch (error: any) {
     console.error("Error fetching drivers:", error);

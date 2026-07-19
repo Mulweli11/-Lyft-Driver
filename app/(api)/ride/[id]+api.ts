@@ -1,61 +1,37 @@
-import { neon } from "@neondatabase/serverless";
-
-const DATABASE_URL = process.env.DATABASE_URL;
-let sql: any = null;
-if (DATABASE_URL) {
-  try {
-    sql = neon(DATABASE_URL);
-  } catch (e) {
-    console.error("Failed to initialize Neon client:", e);
-  }
-} else {
-  console.error("Missing process.env.DATABASE_URL");
-}
+import { getSupabaseClient } from "@/lib/supabase";
 
 export async function GET(request: Request, { id }: { id: string }) {
   if (!id)
     return Response.json({ error: "Missing required fields" }, { status: 400 });
 
-  if (!sql) {
-    console.error("Database client not initialized. Check DATABASE_URL.");
-    return Response.json(
-      { data: [] },
-      { status: 200 },
-    );
-  }
-
   try {
-    const response = await sql`
-        SELECT
-            rides.ride_id,
-            rides.origin_address,
-            rides.destination_address,
-            rides.origin_latitude,
-            rides.origin_longitude,
-            rides.destination_latitude,
-            rides.destination_longitude,
-            rides.ride_time,
-            rides.fare_price,
-            rides.payment_status,
-            rides.created_at,
-            'driver', json_build_object(
-                'driver_id', drivers.id,
-                'first_name', drivers.first_name,
-                'last_name', drivers.last_name,
-                'profile_image_url', drivers.profile_image_url,
-                'car_image_url', drivers.car_image_url,
-                'car_seats', drivers.car_seats,
-                'rating', drivers.rating
-            ) AS driver 
-        FROM 
-            rides
-        INNER JOIN
-            drivers ON rides.driver_id = drivers.id
-        WHERE 
-            rides.user_id = ${id}
-        ORDER BY 
-            rides.created_at DESC;
-    `;
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from("rides")
+      .select(
+        "ride_id, origin_address, destination_address, origin_latitude, origin_longitude, destination_latitude, destination_longitude, ride_time, fare_price, payment_status, created_at, driver_id, drivers(id, first_name, last_name, profile_image_url, car_image_url, car_seats, rating)"
+      )
+      .eq("user_id", id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    const response = (data ?? []).map((ride: any) => ({
+      ...ride,
+      driver: ride.drivers
+        ? {
+            driver_id: ride.drivers.id,
+            first_name: ride.drivers.first_name,
+            last_name: ride.drivers.last_name,
+            profile_image_url: ride.drivers.profile_image_url,
+            car_image_url: ride.drivers.car_image_url,
+            car_seats: ride.drivers.car_seats,
+            rating: ride.drivers.rating,
+          }
+        : null,
+    }));
 
     return Response.json({ data: response });
   } catch (error: any) {

@@ -1,21 +1,10 @@
-import { neon } from "@neondatabase/serverless";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export async function POST(request: Request) {
   try {
     console.log("========== CREATE USER ==========");
 
-    const databaseUrl = process.env.DATABASE_URL;
-
-    if (!databaseUrl) {
-      console.log("DATABASE_URL is missing");
-      return Response.json(
-        { error: "DATABASE_URL is missing" },
-        { status: 500 }
-      );
-    }
-
-    const sql = neon(databaseUrl);
-
+    const supabase = getSupabaseClient();
     const body = await request.json();
 
     console.log("Request Body:", body);
@@ -31,44 +20,42 @@ export async function POST(request: Request) {
       );
     }
 
-    const existingUser = await sql`
-      SELECT * FROM users
-      WHERE clerk_id = ${clerkId};
-    `;
+    const { data: existingUser, error: existingError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("clerk_id", clerkId)
+      .maybeSingle();
 
-    if (existingUser.length > 0) {
+    if (existingError) {
+      throw existingError;
+    }
+
+    if (existingUser) {
       console.log("User already exists");
 
       return Response.json(
         {
           message: "User already exists",
-          data: existingUser[0],
+          data: existingUser,
         },
         { status: 200 }
       );
     }
 
-    const response = await sql`
-      INSERT INTO users (
-        name,
-        email,
-        clerk_id
-      )
-      VALUES (
-        ${name},
-        ${email},
-        ${clerkId}
-      )
-      RETURNING *;
-    `;
+    const { data, error } = await supabase
+      .from("users")
+      .insert({ name, email, clerk_id: clerkId })
+      .select()
+      .single();
 
-    console.log("Inserted User:");
-    console.log(response[0]);
+    if (error) {
+      throw error;
+    }
 
     return Response.json(
       {
         success: true,
-        data: response[0],
+        data,
       },
       {
         status: 201,
