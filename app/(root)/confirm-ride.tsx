@@ -9,10 +9,12 @@ import { useDriverStore } from "@/store";
 const ConfirmRide = () => {
   const { drivers, selectedDriver, setSelectedDriver } = useDriverStore();
 
+  const listData = Array.isArray(drivers) ? drivers : [];
+
   return (
     <RideLayout title={"Choose a Rider"} snapPoints={["65%", "85%"]}>
       <FlatList
-        data={drivers}
+        data={listData}
         keyExtractor={(item, index) => index.toString()}
         renderItem={({ item, index }) => (
           <DriverCard

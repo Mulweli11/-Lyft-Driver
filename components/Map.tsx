@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import MapView, {
-  Marker,
-  PROVIDER_DEFAULT,
+    Marker,
+    PROVIDER_DEFAULT,
 } from "react-native-maps";
 import MapViewDirections from "react-native-maps-directions";
 
 import { icons } from "@/constants";
 import {
-  calculateDriverTimes,
-  calculateRegion,
-  generateMarkersFromData,
+    calculateDriverTimes,
+    calculateRegion,
+    generateMarkersFromData,
 } from "@/lib/map";
+import { getSupabaseClient } from "@/lib/supabase";
 import { useDriverStore, useLocationStore } from "@/store";
 import { Driver, MarkerData } from "@/types/type";
 
@@ -26,79 +27,66 @@ export default function Map() {
     destinationLongitude,
   } = useLocationStore();
 
-  const { selectedDriver, setDrivers } =
+  const { selectedDriver, setDrivers: setStoreDrivers } =
     useDriverStore();
 
   const [markers, setMarkers] = useState<MarkerData[]>([]);
+  const [drivers, setLoadedDrivers] = useState<Driver[]>([]);
 
-  const mockDrivers: Driver[] = [
-    {
-      id: 1,
-      driver_id: 1,
-      first_name: "James",
-      last_name: "Wilson",
-      profile_image_url: "",
-      car_image_url: "",
-      car_seats: 4,
-      rating: "4.9",
-    },
-    {
-      id: 2,
-      driver_id: 2,
-      first_name: "David",
-      last_name: "Brown",
-      profile_image_url: "",
-      car_image_url: "",
-      car_seats: 4,
-      rating: "4.8",
-    },
-    {
-      id: 3,
-      driver_id: 3,
-      first_name: "Michael",
-      last_name: "Johnson",
-      profile_image_url: "",
-      car_image_url: "",
-      car_seats: 6,
-      rating: "4.7",
-    },
-    {
-      id: 4,
-      driver_id: 4,
-      first_name: "Sarah",
-      last_name: "Smith",
-      profile_image_url: "",
-      car_image_url: "",
-      car_seats: 4,
-      rating: "4.6",
-    },
-    {
-      id: 5,
-      driver_id: 5,
-      first_name: "John",
-      last_name: "Mokoena",
-      profile_image_url: "",
-      car_image_url: "",
-      car_seats: 4,
-      rating: "4.8",
-    },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDrivers = async () => {
+      try {
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase
+          .from("drivers")
+          .select(
+            "id, first_name, last_name, profile_image_url, car_image_url, car_seats, rating"
+          )
+          .eq("status", "approved")
+          .eq("verified", true);
+
+        if (!isMounted) return;
+
+        if (error) {
+          throw error;
+        }
+
+        setLoadedDrivers((Array.isArray(data) ? data : []) as Driver[]);
+      } catch (error) {
+        console.error("Failed to load drivers:", error);
+        if (isMounted) {
+          setLoadedDrivers([]);
+        }
+      }
+    };
+
+    loadDrivers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (
       userLatitude != null &&
-      userLongitude != null
+      userLongitude != null &&
+      drivers.length > 0
     ) {
       const driverMarkers =
         generateMarkersFromData({
-          data: mockDrivers,
+          data: drivers,
           userLatitude,
           userLongitude,
         });
 
       setMarkers(driverMarkers);
+    } else {
+      setMarkers([]);
     }
-  }, [userLatitude, userLongitude]);
+  }, [userLatitude, userLongitude, drivers]);
 
   useEffect(() => {
     if (
@@ -112,14 +100,19 @@ export default function Map() {
         userLongitude,
         destinationLatitude,
         destinationLongitude,
-      }).then((drivers) => {
-        setDrivers(drivers as MarkerData[]);
+      }).then((driversWithTimes) => {
+        setStoreDrivers(driversWithTimes as MarkerData[]);
       });
+    } else {
+      setStoreDrivers([]);
     }
   }, [
     markers,
     destinationLatitude,
     destinationLongitude,
+    userLatitude,
+    userLongitude,
+    setStoreDrivers,
   ]);
 
   const region = calculateRegion({

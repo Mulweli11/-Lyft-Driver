@@ -55,16 +55,16 @@ export async function GET(request: Request) {
     }
 
     return Response.json({
-      data: Array.isArray(data) && data.length > 0 ? data : fallbackDrivers,
+      data: Array.isArray(data) ? data : [],
     });
   } catch (error: any) {
     console.error("Error fetching drivers:", error);
 
     const code = error?.code || error?.cause?.code;
     if (code === "ETIMEDOUT" || code === "ECONNREFUSED") {
-      return Response.json({ data: fallbackDrivers });
+      return Response.json({ data: [] });
     }
 
-    return Response.json({ data: null });
+    return Response.json({ data: [] });
   }
 }
