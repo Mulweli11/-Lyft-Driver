@@ -42,7 +42,10 @@ const Payment = ({
 
       if (error) {
         Alert.alert(`Error code: ${error.code}`, error.message);
-      } else {
+        return;
+      }
+
+      try {
         await fetchAPI("/(api)/ride/create", {
           method: "POST",
           headers: {
@@ -55,16 +58,18 @@ const Payment = ({
             origin_longitude: userLongitude,
             destination_latitude: destinationLatitude,
             destination_longitude: destinationLongitude,
-            ride_time: rideTime.toFixed(0),
-            fare_price: parseInt(amount) * 100,
+            ride_time: Math.round(rideTime),
+            fare_price: parseInt(amount, 10) * 100,
             payment_status: "paid",
             driver_id: driverId,
             user_id: userId ?? "guest",
           }),
         });
-
-        setSuccess(true);
+      } catch (rideError: any) {
+        console.warn("Ride creation failed after successful payment:", rideError);
       }
+
+      setSuccess(true);
     } catch (err: any) {
       console.error("Stripe flow failed:", err);
       Alert.alert("Stripe Error", err?.message || "Unable to start payment sheet.");
@@ -101,6 +106,7 @@ const Payment = ({
         customerEphemeralKeySecret: ephemeralKey.secret,
         paymentIntentClientSecret: paymentIntent.client_secret,
         allowsDelayedPaymentMethods: false,
+        currencyCode: "zar",
         returnURL: "myapp://book-ride",
         defaultBillingDetails: {
           email: safeEmail,

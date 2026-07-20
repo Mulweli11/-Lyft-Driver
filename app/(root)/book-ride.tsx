@@ -52,7 +52,7 @@ const BookRide = () => {
               <View className="flex flex-row items-center justify-between mb-3">
                 <Text className="text-base font-JakartaMedium text-neutral-500">Ride Price</Text>
                 <Text className="text-base font-JakartaBold text-success-600">
-                  ${driverDetails?.price ?? "0.00"}
+                  R{driverDetails?.price ?? "0.00"}
                 </Text>
               </View>
 
