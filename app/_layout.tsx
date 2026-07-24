@@ -1,11 +1,11 @@
-import "../global.css";
 import { ClerkLoaded, ClerkProvider } from "@clerk/clerk-expo";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import "react-native-reanimated";
 import { LogBox } from "react-native";
+import "react-native-reanimated";
+import "../global.css";
 
 import { tokenCache } from "@/lib/auth";
 
@@ -50,7 +50,6 @@ export default function RootLayout() {
   <Stack.Screen name="index" />
   <Stack.Screen name="(auth)" />
   <Stack.Screen name="(root)" />
-  <Stack.Screen name="(driver)" />
   <Stack.Screen name="+not-found" />
 </Stack>
       </ClerkLoaded>

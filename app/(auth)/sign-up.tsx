@@ -185,14 +185,6 @@ const SignUp = () => {
               Log In
             </Text>
           </Link>
-
-         <Link
-         href="/(driver)"
-         className="text-lg text-center text-general-200 ">
-         <Text className="text-primary-500 ">
-          Continue as Driver
-         </Text>
-         </Link>
         </View>
 
         <ReactNativeModal

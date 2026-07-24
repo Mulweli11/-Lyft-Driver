@@ -10,31 +10,16 @@ export const sortRides = (rides: Ride[]): Ride[] => {
   return result.reverse();
 };
 
-export function formatTime(value: number | string): string {
-  if (typeof value === "number") {
-    const formattedMinutes = Math.round(value) || 0;
+export function formatTime(minutes: number): string {
+  const formattedMinutes = +minutes?.toFixed(0) || 0;
 
-    if (formattedMinutes < 60) {
-      return `${formattedMinutes} min`;
-    }
-
+  if (formattedMinutes < 60) {
+    return `${minutes} min`;
+  } else {
     const hours = Math.floor(formattedMinutes / 60);
     const remainingMinutes = formattedMinutes % 60;
     return `${hours}h ${remainingMinutes}m`;
   }
-
-  if (typeof value === "string") {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return "Invalid time";
-    }
-
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${hours}:${minutes}`;
-  }
-
-  return "";
 }
 
 export function formatDate(dateString: string): string {
