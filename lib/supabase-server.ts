@@ -1,5 +1,4 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import ws from "ws";
 
 const resolveEnv = (...names: string[]) => {
   for (const name of names) {
@@ -17,6 +16,14 @@ const supabaseUrl = resolveEnv(
   "EXPO_PUBLIC_SUPABASE_URL",
   "SUPABASE_URL",
 );
+const supabaseServiceRoleKey = resolveEnv(
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
+  "EXPO_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_SECRET_KEY",
+  "NEXT_PUBLIC_SUPABASE_SECRET_KEY",
+  "EXPO_PUBLIC_SUPABASE_SECRET_KEY",
+);
 const supabaseAnonKey = resolveEnv(
   "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
   "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
@@ -24,19 +31,34 @@ const supabaseAnonKey = resolveEnv(
   "SUPABASE_ANON_KEY",
 );
 
-export function getSupabaseServerClient() {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error("Supabase environment variables are not configured.");
+export async function getSupabaseServerClient() {
+  if (!supabaseUrl || !(supabaseServiceRoleKey || supabaseAnonKey)) {
+    throw new Error(
+      "Supabase environment variables are not configured. Add SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY to your environment before writing to the drivers table.",
+    );
   }
 
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey, {
+  const options: Record<string, unknown> = {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
-    realtime: {
-      transport: ws as unknown as typeof WebSocket,
-    },
-  });
+  };
+
+  try {
+    const wsModule = await import("ws");
+    const ws = (wsModule.WebSocket ?? wsModule.default ?? wsModule) as unknown as typeof WebSocket;
+    options.realtime = {
+      transport: ws,
+    };
+  } catch (error) {
+    console.warn("Unable to initialize Supabase server realtime transport:", error);
+  }
+
+  return createSupabaseClient(
+    supabaseUrl,
+    supabaseServiceRoleKey || supabaseAnonKey!,
+    options as never,
+  );
 }

@@ -66,12 +66,12 @@ const Profile = () => {
 
     try {
       const profileResult = await fetchAPI(
-        `/(api)/profile?clerkId=${encodeURIComponent(user.id)}`,
+        `/profile?clerkId=${encodeURIComponent(user.id)}`,
       );
       setProfile(profileResult?.data ?? null);
 
       const rideResult = await fetchAPI(
-        `/(api)/ride?clerkId=${encodeURIComponent(user.id)}`,
+        `/ride?clerkId=${encodeURIComponent(user.id)}`,
       );
       setRideSummary(rideResult?.data ?? rideSummary);
     } catch (error) {
@@ -93,7 +93,7 @@ const Profile = () => {
     setSaving(true);
 
     try {
-      const result = await fetchAPI("/(api)/profile", {
+      const result = await fetchAPI("/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clerkId: user.id, ...payload }),

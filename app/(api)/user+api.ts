@@ -1,10 +1,10 @@
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function POST(request: Request) {
   try {
     console.log("========== CREATE USER ==========");
 
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
     const body = await request.json();
 
     console.log("Request Body:", body);
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     }
 
     const { data: existingUser, error: existingError } = await supabase
-      .from("users")
+      .from("drivers")
       .select("*")
       .eq("clerk_id", clerkId)
       .maybeSingle();
@@ -43,8 +43,15 @@ export async function POST(request: Request) {
     }
 
     const { data, error } = await supabase
-      .from("users")
-      .insert({ name, email, clerk_id: clerkId })
+      .from("drivers")
+      .insert({
+        email,
+        clerk_id: clerkId,
+        full_name: name,
+        status: "pending",
+        verified: false,
+        profile_data: {},
+      })
       .select()
       .single();
 

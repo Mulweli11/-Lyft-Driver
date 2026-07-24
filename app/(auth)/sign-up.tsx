@@ -72,7 +72,7 @@ const SignUp = () => {
         const response = await fetchAPI("/(api)/user", {
           method: "POST",
           body: JSON.stringify({
-            name: form.name,
+            name: form.name || form.email,
             email: form.email,
             clerkId: completeSignUp.createdUserId,
           }),

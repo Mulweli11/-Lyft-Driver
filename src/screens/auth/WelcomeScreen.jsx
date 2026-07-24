@@ -1,18 +1,17 @@
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Dimensions,
-  TouchableOpacity,
-  Animated,
-  StatusBar,
-  Platform,
+    Animated,
+    Dimensions,
+    FlatList,
+    Platform,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import Svg, { Path, Circle, Rect, G, Defs, LinearGradient, Stop } from 'react-native-svg';
-import Button from '../../components/common/Button';
-import { colors, typography, spacing, radius } from '../../theme';
+import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { colors } from '../../theme';
 
 const { width, height } = Dimensions.get('window');
 
@@ -219,7 +218,7 @@ const IllustrationDriver = ({ accent }) => (
 const SLIDES = [
   {
     id: '1',
-    label: 'Why Lyft?',
+    label: 'Why Lyft Driver?',
     title: 'Smarter\nRides Together',
     subtitle: 'Connect with verified commuters heading your way.',
     accent: colors.primary,

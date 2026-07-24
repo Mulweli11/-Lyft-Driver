@@ -1,144 +1,43 @@
-import { useUser, useAuth } from "@clerk/clerk-expo";
-import * as Location from "expo-location";
-import { router } from "expo-router";
-import { useEffect } from "react";
-import {
-  Text,
-  View,
-  TouchableOpacity,
-  Image,
-  FlatList,
-  ActivityIndicator,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useUser } from "@clerk/clerk-expo";
 
-import GoogleTextInput from "@/components/GoogleTextInput";
 import Map from "@/components/Map";
-import RideCard from "@/components/RideCard";
-import { icons, images } from "@/constants";
-import { useFetch } from "@/lib/fetch";
+import { fetchAPI } from "@/lib/fetch";
 import { useLocationStore } from "@/store";
-import { Ride } from "@/types/type";
+import * as Location from "expo-location";
+import { useEffect, useState } from "react";
+import { Image, Modal, Pressable, Text, TouchableWithoutFeedback, View } from "react-native";
 
-const mockRides: Ride[] = [
-  {
-    ride_id: "1",
-    origin_address: "Kathmandu, Nepal",
-    destination_address: "Pokhara, Nepal",
-    origin_latitude: "27.717245",
-    origin_longitude: "85.323961",
-    destination_latitude: "28.209583",
-    destination_longitude: "83.985567",
-    ride_time: 391,
-    fare_price: "19500.00",
-    payment_status: "paid",
-    driver_id: 2,
-    user_id: "1",
-    created_at: "2024-08-12 05:19:20.620007",
-    driver: {
-      driver_id: "2",
-      first_name: "David",
-      last_name: "Brown",
-      profile_image_url:
-        "https://ucarecdn.com/6ea6d83d-ef1a-483f-9106-837a3a5b3f67/-/preview/1000x666/",
-      car_image_url:
-        "https://ucarecdn.com/a3872f80-c094-409c-82f8-c9ff38429327/-/preview/930x932/",
-      car_seats: 5,
-      rating: "4.60",
-    },
-  },
-  {
-    ride_id: "2",
-    origin_address: "Jalkot, MH",
-    destination_address: "Pune, Maharashtra, India",
-    origin_latitude: "18.609116",
-    origin_longitude: "77.165873",
-    destination_latitude: "18.520430",
-    destination_longitude: "73.856744",
-    ride_time: 491,
-    fare_price: "24500.00",
-    payment_status: "paid",
-    driver_id: 1,
-    user_id: "1",
-    created_at: "2024-08-12 06:12:17.683046",
-    driver: {
-      driver_id: "1",
-      first_name: "James",
-      last_name: "Wilson",
-      profile_image_url:
-        "https://ucarecdn.com/dae59f69-2c1f-48c3-a883-017bcf0f9950/-/preview/1000x666/",
-      car_image_url:
-        "https://ucarecdn.com/a2dc52b2-8bf7-4e49-9a36-3ffb5229ed02/-/preview/465x466/",
-      car_seats: 4,
-      rating: "4.80",
-    },
-  },
-  {
-    ride_id: "3",
-    origin_address: "Zagreb, Croatia",
-    destination_address: "Rijeka, Croatia",
-    origin_latitude: "45.815011",
-    origin_longitude: "15.981919",
-    destination_latitude: "45.327063",
-    destination_longitude: "14.442176",
-    ride_time: 124,
-    fare_price: "6200.00",
-    payment_status: "paid",
-    driver_id: 1,
-    user_id: "1",
-    created_at: "2024-08-12 08:49:01.809053",
-    driver: {
-      driver_id: "1",
-      first_name: "James",
-      last_name: "Wilson",
-      profile_image_url:
-        "https://ucarecdn.com/dae59f69-2c1f-48c3-a883-017bcf0f9950/-/preview/1000x666/",
-      car_image_url:
-        "https://ucarecdn.com/a2dc52b2-8bf7-4e49-9a36-3ffb5229ed02/-/preview/465x466/",
-      car_seats: 4,
-      rating: "4.80",
-    },
-  },
-  {
-    ride_id: "4",
-    origin_address: "Okayama, Japan",
-    destination_address: "Osaka, Japan",
-    origin_latitude: "34.655531",
-    origin_longitude: "133.919795",
-    destination_latitude: "34.693725",
-    destination_longitude: "135.502254",
-    ride_time: 159,
-    fare_price: "7900.00",
-    payment_status: "paid",
-    driver_id: 3,
-    user_id: "1",
-    created_at: "2024-08-12 18:43:54.297838",
-    driver: {
-      driver_id: "3",
-      first_name: "Michael",
-      last_name: "Johnson",
-      profile_image_url:
-        "https://ucarecdn.com/0330d85c-232e-4c30-bd04-e5e4d0e3d688/-/preview/826x822/",
-      car_image_url:
-        "https://ucarecdn.com/289764fb-55b6-4427-b1d1-f655987b4a14/-/preview/930x932/",
-      car_seats: 4,
-      rating: "4.70",
-    },
-  },
-];
+const seatIcon = require("@/assets/images/car-seat.png");
 
 const Home = () => {
   const { user } = useUser();
-  const { signOut } = useAuth();
+  const { setUserLocation, userLatitude, userLongitude } = useLocationStore();
+  const [isOnline, setIsOnline] = useState(false);
+  const [showOnlineSheet, setShowOnlineSheet] = useState(false);
+  const [availableSeats, setAvailableSeats] = useState(2);
 
-  const { setUserLocation, setDestinationLocation } = useLocationStore();
+  const persistDriverStatus = async (nextOnline: boolean, seats = availableSeats) => {
+    if (!user?.id || userLatitude == null || userLongitude == null) {
+      return;
+    }
 
-  const {
-    data: recentRides,
-    loading,
-  } = useFetch<Ride[]>(`/(api)/ride/${user?.id}`);
-
-  const rides = recentRides && recentRides.length > 0 ? recentRides : mockRides;
+    try {
+      await fetchAPI("/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerkId: user.id,
+          is_online: nextOnline,
+          car_seats: seats,
+          latitude: userLatitude,
+          longitude: userLongitude,
+          last_location_update: new Date().toISOString(),
+        }),
+      });
+    } catch (error) {
+      console.warn("Unable to update driver presence", error);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -154,85 +53,112 @@ const Home = () => {
         longitude: location.coords.longitude,
       });
 
+      const nextAddress = `${address[0]?.name ?? "Current location"}, ${address[0]?.region ?? ""}`;
+
       setUserLocation({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-        address: `${address[0].name}, ${address[0].region}`,
+        address: nextAddress,
       });
     })();
-  }, []);
+  }, [setUserLocation]);
 
-  const handleDestinationPress = (location: {
-    latitude: number;
-    longitude: number;
-    address: string;
-  }) => {
-    setDestinationLocation(location);
-    router.push("/(root)/find-ride");
-  };
+  useEffect(() => {
+    if (!user?.id || userLatitude == null || userLongitude == null) {
+      return;
+    }
+
+    void persistDriverStatus(isOnline, availableSeats);
+  }, [availableSeats, isOnline, user?.id, userLatitude, userLongitude]);
 
   return (
-    <SafeAreaView className="bg-general-500 flex-1">
-      <FlatList
-        data={rides.slice(0, 5)}
-        renderItem={({ item }) => <RideCard ride={item} />}
-        keyExtractor={(item) => item.ride_id.toString()}
-        className="px-5"
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 120 }}
-        ListHeaderComponent={
-          <>
-            <View className="flex-row justify-between items-center my-5">
-              <Text className="text-2xl font-JakartaExtraBold">
-                Welcome {user?.firstName} 👋
+    <View className="flex-1 bg-white">
+      <View className="absolute top-11 left-4 right-4 z-10 items-center">
+        <Pressable
+          onPress={() => {
+            if (isOnline) {
+              setIsOnline(false);
+              void persistDriverStatus(false, availableSeats);
+              return;
+            }
+            setShowOnlineSheet(true);
+          }}
+          className={`px-4 py-2 rounded-full ${isOnline ? "bg-green-600" : "bg-gray-600"}`}
+        >
+          <Text className="text-white font-semibold">
+            {isOnline ? "Online" : "Offline"}
+          </Text>
+        </Pressable>
+      </View>
+
+      <Modal
+        visible={showOnlineSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowOnlineSheet(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowOnlineSheet(false)}>
+          <View className="flex-1 bg-black/30" />
+        </TouchableWithoutFeedback>
+
+        <View className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white px-6 py-4">
+          <View className="w-12 h-1.5 rounded-full bg-gray-300 self-center mb-3" />
+          <Text className="text-lg font-semibold text-gray-900">Go online</Text>
+          <Text className="mt-1 text-sm text-gray-600">
+            You are about to start accepting ride requests.
+          </Text>
+
+          <View className="mt-4 flex-row items-center justify-between rounded-xl border border-gray-200 px-3 py-3">
+            <View className="flex-row items-center gap-2">
+              <Image source={seatIcon} className="h-5 w-5" resizeMode="contain" />
+              <Text className="text-sm font-medium text-gray-700">Available seats</Text>
+            </View>
+
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                onPress={() => setAvailableSeats((prev) => Math.max(1, prev - 1))}
+                className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+              >
+                <Text className="text-lg font-semibold text-gray-700">−</Text>
+              </Pressable>
+
+              <Text className="min-w-6 text-center text-base font-semibold text-gray-900">
+                {availableSeats}
               </Text>
 
-              <TouchableOpacity
-                className="w-10 h-10 rounded-full bg-white justify-center items-center"
-                onPress={() => {
-                  signOut();
-                  router.replace("/(auth)/sign-in");
-                }}
+              <Pressable
+                onPress={() => setAvailableSeats((prev) => prev + 1)}
+                className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
               >
-                <Image source={icons.out} className="w-4 h-4" />
-              </TouchableOpacity>
+                <Text className="text-lg font-semibold text-gray-700">+</Text>
+              </Pressable>
             </View>
+          </View>
 
-            <GoogleTextInput
-              icon={icons.search}
-              containerStyle="bg-white shadow-md shadow-neutral-300"
-              handlePress={handleDestinationPress}
-            />
+          <View className="mt-4 flex-row gap-2">
+            <Pressable
+              onPress={() => setShowOnlineSheet(false)}
+              className="flex-1 items-center rounded-xl border border-gray-300 py-2.5"
+            >
+              <Text className="font-medium text-gray-700">Cancel</Text>
+            </Pressable>
 
-            <Text className="text-xl font-JakartaBold mt-6 mb-3">
-              Your Current Location
-            </Text>
+            <Pressable
+              onPress={() => {
+                setIsOnline(true);
+                setShowOnlineSheet(false);
+                void persistDriverStatus(true, availableSeats);
+              }}
+              className="flex-1 items-center rounded-xl bg-green-600 py-2.5"
+            >
+              <Text className="font-medium text-white">Go online</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
-            <View className="h-[300px]">
-              <Map />
-            </View>
-
-            <Text className="text-xl font-JakartaBold mt-6 mb-4">
-              Recent Rides
-            </Text>
-          </>
-        }
-        ListEmptyComponent={
-          loading ? (
-            <ActivityIndicator size="large" color="#0286FF" />
-          ) : (
-            <View className="items-center mt-10">
-              <Image
-                source={images.noResult}
-                className="w-40 h-40"
-                resizeMode="contain"
-              />
-              <Text>No recent rides found.</Text>
-            </View>
-          )
-        }
-      />
-    </SafeAreaView>
+      <Map />
+    </View>
   );
 };
 

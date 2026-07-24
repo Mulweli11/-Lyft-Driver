@@ -5,7 +5,7 @@ export async function GET(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Missing required fields" }, { status: 400 });
 
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data, error } = await supabase
       .from("rides")
       .select(

@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "@/lib/supabase";
+import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function GET(request: Request) {
   try {
@@ -9,10 +9,10 @@ export async function GET(request: Request) {
       return Response.json({ error: "Missing clerkId" }, { status: 400 });
     }
 
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
     const { data: profile, error } = await supabase
-      .from("users")
-      .select("id, name, email, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data")
+      .from("drivers")
+      .select("id, full_name, email, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update")
       .eq("clerk_id", clerkId)
       .maybeSingle();
 
@@ -24,6 +24,7 @@ export async function GET(request: Request) {
       data: profile
         ? {
             ...profile,
+            name: profile.full_name ?? null,
             profile_data: profile.profile_data ?? {},
           }
         : null,
@@ -43,35 +44,109 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing clerkId" }, { status: 400 });
     }
 
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseServerClient();
 
     const profilePayload =
       profile_data && typeof profile_data === "object" ? profile_data : {};
 
+    const updatePayload: Record<string, unknown> = {
+      profile_data: {
+        ...(profilePayload || {}),
+      },
+    };
+
+    if (typeof updates.name !== "undefined") {
+      updatePayload.full_name = updates.name;
+    }
+
+    if (typeof updates.email !== "undefined") {
+      updatePayload.email = updates.email;
+    }
+
+    if (typeof updates.profile_image_url !== "undefined") {
+      updatePayload.profile_image_url = updates.profile_image_url;
+    }
+
+    if (typeof updates.rating !== "undefined") {
+      updatePayload.rating = updates.rating;
+    }
+
+    if (typeof updates.total_trips !== "undefined") {
+      updatePayload.total_trips = updates.total_trips;
+    }
+
+    if (typeof updates.verification_percentage !== "undefined") {
+      updatePayload.verification_percentage = updates.verification_percentage;
+    }
+
+    if (typeof updates.car_seats !== "undefined") {
+      updatePayload.car_seats = updates.car_seats;
+    }
+
+    if (typeof updates.is_online !== "undefined") {
+      updatePayload.is_online = updates.is_online;
+    }
+
+    if (typeof updates.latitude !== "undefined") {
+      updatePayload.latitude = updates.latitude;
+    }
+
+    if (typeof updates.longitude !== "undefined") {
+      updatePayload.longitude = updates.longitude;
+    }
+
+    if (typeof updates.last_location_update !== "undefined") {
+      updatePayload.last_location_update = updates.last_location_update;
+    }
+
+    let result: { data: any; error: any };
     const { data, error } = await supabase
-      .from("users")
-      .update({
-        name: updates.name,
-        email: updates.email,
-        profile_image_url: updates.profile_image_url,
-        rating: updates.rating,
-        total_trips: updates.total_trips,
-        verification_percentage: updates.verification_percentage,
-        profile_data: {
-          ...(profilePayload || {}),
+      .from("drivers")
+      .upsert(
+        {
+          clerk_id: clerkId,
+          ...updatePayload,
+          full_name: typeof updates.name === "string" ? updates.name : "Driver",
+          email: typeof updates.email === "string" ? updates.email : null,
+          status: "pending",
+          verified: false,
+          profile_data: profilePayload || {},
+          is_online: typeof updates.is_online === "boolean" ? updates.is_online : false,
+          car_seats: typeof updates.car_seats === "number" ? updates.car_seats : null,
+          latitude: typeof updates.latitude === "number" ? updates.latitude : null,
+          longitude: typeof updates.longitude === "number" ? updates.longitude : null,
+          last_location_update:
+            typeof updates.last_location_update === "string"
+              ? updates.last_location_update
+              : null,
         },
-      })
-      .eq("clerk_id", clerkId)
+        { onConflict: "clerk_id", ignoreDuplicates: false },
+      )
       .select()
       .single();
 
-    if (error) {
-      throw error;
+    result = { data, error };
+
+    if (result.error) {
+      throw result.error;
     }
 
-    return Response.json({ data });
+    return Response.json({
+      data: result.data
+        ? {
+            ...result.data,
+            name: result.data.full_name ?? null,
+          }
+        : null,
+    });
   } catch (error) {
     console.error("Error updating profile:", error);
-    return Response.json({ error: "Internal Server Error" }, { status: 500 });
+    return Response.json(
+      {
+        error: "Internal Server Error",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
   }
 }

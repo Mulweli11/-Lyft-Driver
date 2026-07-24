@@ -1,9 +1,13 @@
-import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, Platform,
+    Alert, Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../theme';
 
@@ -346,7 +350,7 @@ export default function PassengerProfileScreen({ navigation }) {
             iconBg="#F9FAFB"
             iconColor="#666"
             label="Privacy Settings"
-            onPress={() => Alert.alert('Privacy', 'Manage what data is shared with drivers and Lyft.')}
+            onPress={() => Alert.alert('Privacy', 'Manage what data is shared with drivers and Lyft Driver.')}
           />
           <View style={styles.rowDivider} />
           <MenuRow
@@ -381,7 +385,7 @@ export default function PassengerProfileScreen({ navigation }) {
           />
         </Card>
 
-        <Text style={styles.versionText}>Lyft v1.0.0 · by DevSphere Inc.</Text>
+        <Text style={styles.versionText}>Lyft Driver v1.0.0 · by DevSphere Inc.</Text>
       </ScrollView>
     </View>
   );

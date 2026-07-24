@@ -43,7 +43,7 @@ const Payment = ({
       if (error) {
         Alert.alert(`Error code: ${error.code}`, error.message);
       } else {
-        await fetchAPI("/(api)/ride/create", {
+        await fetchAPI("/ride/create", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -1,13 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  StatusBar,
-  Dimensions,
-  Image,
-  Easing,
+    Animated,
+    Dimensions,
+    Easing,
+    Image,
+    StatusBar,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { colors, typography } from '../../theme';
 
@@ -288,7 +288,7 @@ export default function SplashScreen({ navigation }) {
           { opacity: textOpacity, transform: [{ translateY: textTranslate }] },
         ]}
       >
-        Lyft
+        Lyft Driver
       </Animated.Text>
 
       {/* ── Divider rule ── */}

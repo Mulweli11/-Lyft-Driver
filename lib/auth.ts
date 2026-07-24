@@ -34,27 +34,26 @@ export const googleOAuth = async (startOAuthFlow: any) => {
       redirectUrl: Linking.createURL("/(root)/(tabs)/home"),
     });
 
-    if (createdSessionId) {
-      if (setActive) {
-        await setActive({ session: createdSessionId });
+    if (createdSessionId && setActive) {
+      await setActive({ session: createdSessionId });
 
-        if (signUp.createdUserId) {
-          await fetchAPI("/(api)/user", {
-            method: "POST",
-            body: JSON.stringify({
-              name: `${signUp.firstName} ${signUp.lastName}`,
-              email: signUp.emailAddress,
-              clerkId: signUp.createdUserId,
-            }),
-          });
-        }
-
-        return {
-          success: true,
-          code: "success",
-          message: "You have successfully signed in with Google",
-        };
+      if (signUp?.createdUserId) {
+        const fullName = `${signUp.firstName ?? ""} ${signUp.lastName ?? ""}`.trim();
+        await fetchAPI("/user", {
+          method: "POST",
+          body: JSON.stringify({
+            name: fullName || signUp.emailAddress || "Google User",
+            email: signUp.emailAddress,
+            clerkId: signUp.createdUserId,
+          }),
+        });
       }
+
+      return {
+        success: true,
+        code: "success",
+        message: "You have successfully signed in with Google",
+      };
     }
 
     return {
@@ -63,10 +62,15 @@ export const googleOAuth = async (startOAuthFlow: any) => {
     };
   } catch (err: any) {
     console.error(err);
+    const message =
+      err?.message ??
+      err?.errors?.[0]?.longMessage ??
+      "An error occurred while signing in with Google";
+
     return {
       success: false,
-      code: err.code,
-      message: err?.errors[0]?.longMessage,
+      code: err?.code ?? "unknown_error",
+      message,
     };
   }
 };

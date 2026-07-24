@@ -9,7 +9,7 @@ export async function GET(request: Request) {
       return Response.json({ error: "Missing clerkId" }, { status: 400 });
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data: rides, error } = await supabase
       .from("rides")
       .select("*, drivers(first_name, last_name)")

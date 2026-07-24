@@ -1,9 +1,14 @@
-import React from 'react';
 import {
-  View, Text, StyleSheet, ScrollView,
-  TouchableOpacity, StatusBar, Platform, Alert,
+    Alert,
+    Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { useAuth } from '../../context/AuthContext';
 import { colors } from '../../theme';
 
@@ -376,7 +381,7 @@ export default function DriverProfileScreen({ navigation }) {
             icon={IconLock}
             iconBg="#F9FAFB" iconColor="#666"
             label="Privacy Settings"
-            onPress={() => Alert.alert('Privacy', 'Manage what data is shared with passengers and Lyft.')}
+            onPress={() => Alert.alert('Privacy', 'Manage what data is shared with passengers and Lyft Driver.')}
           />
         </Card>
 

@@ -1,16 +1,16 @@
-import React, { useRef, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-  StatusBar,
-  Dimensions,
-  Image,
-  Platform,
+    Animated,
+    Dimensions,
+    Image,
+    Platform,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { colors } from '../../theme';
 
 const { height } = Dimensions.get('window');
@@ -110,7 +110,7 @@ export default function GetStartedScreen({ navigation }) {
             resizeMode="contain"
           />
         </View>
-        <Text style={styles.heroTitle}>Lyft</Text>
+        <Text style={styles.heroTitle}>Lyft Driver</Text>
         <Text style={styles.heroSub}>Ride Smart. Save More.</Text>
       </Animated.View>
 
@@ -124,7 +124,7 @@ export default function GetStartedScreen({ navigation }) {
         <View style={styles.sheetHandle} />
 
         <Text style={styles.sheetTitle}>Choose your role</Text>
-        <Text style={styles.sheetSub}>How do you want to use Lyft?</Text>
+        <Text style={styles.sheetSub}>How do you want to use Lyft Driver?</Text>
 
         {/* These are plain TouchableOpacity — no Animated wrapper blocking touches */}
         <RoleCard

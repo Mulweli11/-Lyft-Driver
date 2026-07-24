@@ -18,7 +18,7 @@ const EditProfile = () => {
     }
 
     try {
-      await fetchAPI("/(api)/profile", {
+      await fetchAPI("/profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ clerkId: user.id, [field]: value }),

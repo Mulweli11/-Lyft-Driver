@@ -29,7 +29,7 @@ const fallbackRequests = [
 
 export async function GET() {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("driver_requests")
       .select(

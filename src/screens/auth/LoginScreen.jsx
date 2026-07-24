@@ -1,12 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform, StatusBar, Animated, Alert, Image,
+    Alert,
+    Animated,
+    Image,
+    KeyboardAvoidingView, Platform,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import Input from '../../components/common/Input';
 import { useAuth } from '../../context/AuthContext';
-import { colors, typography, spacing, radius, shadows } from '../../theme';
+import { colors } from '../../theme';
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -125,7 +133,7 @@ export default function LoginScreen({ navigation }) {
             />
           </View>
           <Text style={styles.headerTitle}>Welcome back</Text>
-          <Text style={styles.headerSub}>Log in to your Lyft account</Text>
+          <Text style={styles.headerSub}>Log in to your Lyft Driver account</Text>
         </Animated.View>
       </View>
 
