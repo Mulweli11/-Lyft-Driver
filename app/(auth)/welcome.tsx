@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import LogoLoader from "@/components/Logoloader";
+import LogoLoader from "@/components/LogoLoader";
 import { onboarding } from "@/constants";
 
 const { width, height } = Dimensions.get("window");

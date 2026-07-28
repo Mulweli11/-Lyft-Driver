@@ -1,22 +1,23 @@
 import { Stack } from "expo-router";
 
+const GREEN_DEEP = "#06231A";
+
 const Layout = () => {
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen name="find-ride" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="confirm-ride"
-        options={{
-          headerShown: false,
-        }}
-      />
-      <Stack.Screen
-        name="book-ride"
-        options={{
-          headerShown: false,
-        }}
-      />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: "slide_from_right",
+        contentStyle: { backgroundColor: GREEN_DEEP },
+      }}
+    >
+      <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
+      <Stack.Screen name="create-trip" />
+      <Stack.Screen name="verification" />
+      <Stack.Screen name="vehicle-details" />
+      <Stack.Screen name="bank-details" />
+      <Stack.Screen name="chat/[rideId]" />
+      <Stack.Screen name="edit-profile" />
     </Stack>
   );
 };

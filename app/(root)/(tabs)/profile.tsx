@@ -1,520 +1,298 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Linking,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import ProfileSectionCard from "@/components/ProfileSectionCard";
-import StatCard from "@/components/StatCard";
+import { SectionCard, StatCard } from "@/components/Cards";
 import { fetchAPI } from "@/lib/fetch";
+import {
+  PickedImage,
+  captureImage,
+  pickFromLibrary,
+  uploadAvatar,
+} from "@/lib/verification";
 
-type ProfileRecord = {
-  id?: number;
-  name?: string;
-  email?: string;
-  clerk_id?: string;
-  profile_image_url?: string;
-  rating?: number;
-  total_trips?: number;
-  verification_percentage?: number;
-  government_id_url?: string;
-  selfie_image_url?: string;
-  phone_number?: string;
-  profile_data?: Record<string, any>;
-};
-
-type RideSummary = {
-  completed_trips: number;
-  cancelled_trips: number;
-  money_spent: number;
-  favorite_driver: string;
-  last_ride: string;
-};
+// Replace with your real support details
+const SUPPORT_EMAIL = "drivers@lyftcarpool.co.za";
+const SUPPORT_WHATSAPP = "27110000000";
 
 const Profile = () => {
   const { user } = useUser();
   const { signOut } = useAuth();
-  const router = useRouter();
-  const [profile, setProfile] = useState<ProfileRecord | null>(null);
-  const [rideSummary, setRideSummary] = useState<RideSummary>({
-    completed_trips: 0,
-    cancelled_trips: 0,
-    money_spent: 0,
-    favorite_driver: "Not available",
-    last_ride: "No rides yet",
-  });
+
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const loadProfile = async () => {
+  const load = useCallback(async () => {
     if (!user?.id) {
       setLoading(false);
       return;
     }
-
-    setLoading(true);
-
     try {
-      const profileResult = await fetchAPI(
-        `/profile?clerkId=${encodeURIComponent(user.id)}`,
+      const result = await fetchAPI(
+        `/(api)/profile?clerkId=${encodeURIComponent(user.id)}`,
       );
-      setProfile(profileResult?.data ?? null);
-
-      const rideResult = await fetchAPI(
-        `/ride?clerkId=${encodeURIComponent(user.id)}`,
-      );
-      setRideSummary(rideResult?.data ?? rideSummary);
+      setProfile(result?.data ?? null);
     } catch (error) {
-      console.warn("Unable to load profile data", error);
+      console.warn("Could not load profile", error);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadProfile();
   }, [user?.id]);
 
-  const saveProfile = async (payload: Record<string, unknown>) => {
-    if (!user?.id) {
-      return;
-    }
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
 
-    setSaving(true);
+  const vehicle = profile?.profile_data?.vehicle ?? {};
+  const driverStatus = profile?.driver_verification_status ?? "not_submitted";
+  const approved = driverStatus === "approved";
 
-    try {
-      const result = await fetchAPI("/profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clerkId: user.id, ...payload }),
-      });
-
-      if (result?.data) {
-        setProfile(result.data);
+  const changePhoto = () => {
+    const run = async (fn: () => Promise<PickedImage | null>) => {
+      try {
+        const image = await fn();
+        if (!image || !user?.id) return;
+        setSaving(true);
+        const url = await uploadAvatar(user.id, image);
+        await fetchAPI("/(api)/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clerkId: user.id, profile_image_url: url }),
+        });
+        await load();
+      } catch (error: any) {
+        Alert.alert("Photo upload", error?.message ?? "Please try again.");
+      } finally {
+        setSaving(false);
       }
-    } catch (error) {
-      Alert.alert("Update failed", "Your profile could not be saved right now.");
-      console.warn(error);
-    } finally {
-      setSaving(false);
-    }
-  };
+    };
 
-  const handlePickProfilePhoto = async () => {
-    Alert.alert(
-      "Profile photo",
-      "Photo upload will be enabled here once the media picker module is available in this build.",
-    );
-  };
-
-  const handleGovernmentIdUpload = async () => {
-    Alert.alert(
-      "Government ID",
-      "Document upload will be enabled here once the picker module is available in this build.",
-    );
-  };
-
-  const handleOpenSelfieCamera = async () => {
-    Alert.alert(
-      "Selfie verification",
-      "Selfie capture will be enabled here once camera support is available in this build.",
-    );
-  };
-
-  const handleTogglePreference = async (key: string, value: boolean) => {
-    const existingProfileData = profile?.profile_data ?? {};
-    await saveProfile({
-      profile_data: {
-        ...existingProfileData,
-        [key]: value,
-      },
-    });
-  };
-
-  const handleLogout = async () => {
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
+    Alert.alert("Profile photo", "Passengers see this when they book you.", [
+      { text: "Take a photo", onPress: () => run(() => captureImage(true)) },
+      { text: "Choose from library", onPress: () => run(pickFromLibrary) },
       { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  const handleSignOut = () => {
+    Alert.alert("Sign out?", "You'll stop receiving booking requests.", [
+      { text: "Stay", style: "cancel" },
       {
         text: "Sign out",
         style: "destructive",
         onPress: async () => {
           await signOut();
-          router.replace("/(auth)/welcome");
+          router.replace("/(auth)/sign-in");
         },
       },
     ]);
   };
 
-  const profileData = profile?.profile_data ?? {};
-  const fullName =
-    profile?.name ||
-    `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() ||
-    "Your Name";
-  const emailAddress =
-    profile?.email || user?.primaryEmailAddress?.emailAddress || "Add your email";
-  const phoneNumber =
-    profile?.phone_number || profileData.phone_number || user?.primaryPhoneNumber?.phoneNumber || "Add a phone number";
-  const rating = typeof profile?.rating === "number" ? profile.rating : 5.0;
-  const totalTrips = typeof profile?.total_trips === "number" ? profile.total_trips : 0;
-  const verification = typeof profile?.verification_percentage === "number" ? profile.verification_percentage : 0;
-  const completedSteps = [
-    Boolean(profile?.profile_image_url || profileData.profile_image_url || user?.imageUrl),
-    Boolean(phoneNumber && phoneNumber !== "Add a phone number"),
-    Boolean(profile?.government_id_url || profileData.government_id_url),
-    Boolean(profile?.selfie_image_url || profileData.selfie_image_url),
-  ].filter(Boolean).length;
-  const progressValue = Math.round((completedSteps / 4) * 100);
-
-  const renderSkeleton = () => (
-    <View className="px-1 py-3">
-      <View className="mb-5 h-24 w-full rounded-3xl bg-neutral-200" />
-      <View className="mb-4 h-24 rounded-3xl bg-neutral-200" />
-      <View className="mb-4 h-28 rounded-3xl bg-neutral-200" />
-      <View className="mb-4 h-24 rounded-3xl bg-neutral-200" />
-    </View>
-  );
-
   return (
-    <SafeAreaView className="flex-1 bg-neutral-50">
-      <ScrollView className="px-5" contentContainerStyle={{ paddingBottom: 140 }}>
-        <Text className="my-5 text-2xl font-JakartaBold text-neutral-900">
-          My profile
+    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
+      <ScrollView
+        className="px-5"
+        contentContainerStyle={{ paddingBottom: 140 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text className="my-5 text-2xl font-JakartaExtraBold text-[#101814]">
+          Profile
         </Text>
 
         {loading ? (
-          renderSkeleton()
+          <View className="items-center py-16">
+            <ActivityIndicator size="large" color="#0E5C3F" />
+          </View>
         ) : (
           <>
-            <View className="my-4 items-center justify-center">
-              <View className="relative">
-                <Image
-                  source={{
-                    uri:
-                      profile?.profile_image_url ||
-                      profileData.profile_image_url ||
-                      user?.imageUrl ||
-                      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=240&q=80",
-                  }}
-                  className="h-[120px] w-[120px] rounded-full border-[3px] border-white"
-                />
-                <Pressable
-                  onPress={handlePickProfilePhoto}
-                  className="absolute bottom-0 right-0 h-10 w-10 items-center justify-center rounded-full bg-black"
-                >
-                  <Ionicons name="camera" size={18} color="white" />
-                </Pressable>
-              </View>
-              <Text className="mt-4 text-xl font-JakartaBold text-neutral-900">
-                {fullName}
-              </Text>
-              <Text className="mt-1 text-sm text-neutral-500">{emailAddress}</Text>
-            </View>
-
-            <View className="mb-5 flex-row gap-3">
-              <StatCard icon="⭐" label="Rating" value={rating.toFixed(1)} />
-              <StatCard icon="🚗" label="Trips" value={String(totalTrips)} />
-              <StatCard icon="✔️" label="Verification" value={`${verification}%`} />
-            </View>
-
-            <View className="mb-5 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm shadow-neutral-200">
-              <View className="flex-row items-start justify-between">
-                <View className="flex-1 pr-3">
-                  <Text className="text-lg font-JakartaBold text-neutral-900">
-                    Complete your verification
-                  </Text>
-                  <Text className="mt-1 text-sm text-neutral-500">
-                    Complete your profile to unlock all features.
-                  </Text>
+            {/* Identity */}
+            <View className="items-center rounded-3xl border border-[#E2E9E5] bg-white px-5 py-6">
+              <Pressable onPress={changePhoto} className="relative active:opacity-80">
+                {profile?.profile_image_url ? (
+                  <Image
+                    source={{ uri: profile.profile_image_url }}
+                    className="h-24 w-24 rounded-full bg-[#EEF1F0]"
+                  />
+                ) : (
+                  <View className="h-24 w-24 items-center justify-center rounded-full bg-[#E6F2EC]">
+                    <Ionicons name="person" size={38} color="#0E5C3F" />
+                  </View>
+                )}
+                <View className="absolute -bottom-1 -right-1 h-8 w-8 items-center justify-center rounded-full border-[3px] border-white bg-[#0E5C3F]">
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="camera" size={14} color="#fff" />
+                  )}
                 </View>
-                <Text className="text-lg font-JakartaBold text-neutral-900">
-                  {progressValue}%
+              </Pressable>
+
+              <Text className="mt-4 text-[19px] font-JakartaExtraBold text-[#101814]">
+                {profile?.name ?? user?.fullName ?? "Driver"}
+              </Text>
+
+              <View
+                className={`mt-2 flex-row items-center gap-1.5 rounded-full px-3 py-1.5 ${
+                  approved ? "bg-[#E6F2EC]" : "bg-[#FDF4E3]"
+                }`}
+              >
+                <Ionicons
+                  name={approved ? "shield-checkmark" : "time-outline"}
+                  size={12}
+                  color={approved ? "#0E5C3F" : "#8A6100"}
+                />
+                <Text
+                  className={`text-[11.5px] font-JakartaBold ${
+                    approved ? "text-[#0E5C3F]" : "text-[#8A6100]"
+                  }`}
+                >
+                  {approved
+                    ? "Approved driver"
+                    : driverStatus === "pending"
+                      ? "Verification under review"
+                      : "Not yet verified"}
                 </Text>
               </View>
-
-              <View className="mt-4 h-2 rounded-full bg-neutral-100">
-                <View
-                  className="h-2 rounded-full bg-black"
-                  style={{ width: `${progressValue}%` }}
-                />
-              </View>
-
-              <View className="mt-4 gap-2">
-                {[
-                  "Profile Photo",
-                  "Phone Number",
-                  "Government ID",
-                  "Selfie Verification",
-                ].map((step, index) => {
-                  const isComplete = index < completedSteps;
-                  return (
-                    <View key={step} className="flex-row items-center">
-                      <View
-                        className={`mr-3 h-2.5 w-2.5 rounded-full ${isComplete ? "bg-black" : "bg-neutral-300"}`}
-                      />
-                      <Text className="text-sm text-neutral-600">{step}</Text>
-                    </View>
-                  );
-                })}
-              </View>
             </View>
 
+            {/* Stats */}
+            <View className="mt-4 flex-row gap-3">
+              <StatCard
+                icon="star-outline"
+                label="Rating"
+                value={(profile?.rating ?? 5).toFixed(1)}
+              />
+              <StatCard
+                icon="car-sport-outline"
+                label="Trips"
+                value={String(profile?.total_trips ?? 0)}
+              />
+              <StatCard
+                icon="people-outline"
+                label="Seats"
+                value={String(vehicle.seats ?? "—")}
+              />
+            </View>
+
+            {/* Vehicle */}
+            <Text className="mb-3 mt-6 text-[15px] font-JakartaExtraBold text-[#101814]">
+              My vehicle
+            </Text>
+            <SectionCard
+              title={
+                vehicle.make ? `${vehicle.make} ${vehicle.model}` : "Add your vehicle"
+              }
+              value={
+                vehicle.plate
+                  ? `${vehicle.colour ?? ""} · ${vehicle.plate}`
+                  : "Make, model and registration"
+              }
+              icon="car-sport-outline"
+              onPress={() => router.push("/(root)/vehicle-details")}
+            />
+
+            {/* Driving */}
+            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#101814]">
+              Driving
+            </Text>
+            <View className="mb-1">
+              <SectionCard
+                title="Driver verification"
+                value="Licence, permit and vehicle documents"
+                icon="shield-checkmark-outline"
+                status={approved ? "verified" : "required"}
+                onPress={() => router.push("/(root)/verification")}
+              />
+              <SectionCard
+                title="Payout bank account"
+                value="Where your money is paid"
+                icon="business-outline"
+                onPress={() => router.push("/(root)/bank-details")}
+              />
+              <SectionCard
+                title="Earnings & payouts"
+                value="Balance, withdrawals and history"
+                icon="wallet-outline"
+                onPress={() => router.push("/(root)/(tabs)/earnings")}
+              />
+              <SectionCard
+                title="Offer a trip"
+                icon="add-circle-outline"
+                onPress={() => router.push("/(root)/create-trip")}
+              />
+            </View>
+
+            {/* Account */}
+            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#101814]">
+              Account
+            </Text>
+            <View className="mb-1">
+              <SectionCard
+                title="Full name"
+                value={profile?.name ?? "Not set"}
+                icon="person-outline"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(root)/edit-profile",
+                    params: { field: "name", label: "Full name" },
+                  })
+                }
+              />
+              <SectionCard
+                title="Phone number"
+                value={profile?.phone_number ?? "Not set"}
+                icon="call-outline"
+                onPress={() =>
+                  router.push({
+                    pathname: "/(root)/edit-profile",
+                    params: { field: "phone_number", label: "Phone number" },
+                  })
+                }
+              />
+            </View>
+
+            {/* Support */}
+            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#101814]">
+              Support
+            </Text>
             <View className="mb-5">
-              <Text className="mb-3 text-lg font-JakartaBold text-neutral-900">
-                Identity & Security
-              </Text>
-              <View className="gap-3">
-                <ProfileSectionCard
-                  title="Government ID"
-                  value={profile?.government_id_url || profileData.government_id_url ? "Submitted" : "Not Submitted"}
-                  icon="document-text"
-                  onPress={handleGovernmentIdUpload}
-                />
-                <ProfileSectionCard
-                  title="Selfie Verification"
-                  value={profile?.selfie_image_url || profileData.selfie_image_url ? "Verified" : "Not Verified"}
-                  icon="camera"
-                  onPress={handleOpenSelfieCamera}
-                />
-                <ProfileSectionCard
-                  title="Phone Verification"
-                  value={phoneNumber && phoneNumber !== "Add a phone number" ? "Verified" : "Verify"}
-                  icon="call"
-                  onPress={() =>
-                    Alert.alert("Phone verification", "Use Clerk phone verification when it is enabled for your account.")
-                  }
-                />
-                <ProfileSectionCard
-                  title="Change Password"
-                  value="Reset or manage"
-                  icon="key"
-                  onPress={() => Linking.openURL("https://accounts.clerk.com/")}
-                />
-              </View>
+              <SectionCard
+                title="WhatsApp driver support"
+                icon="logo-whatsapp"
+                onPress={() => Linking.openURL(`https://wa.me/${SUPPORT_WHATSAPP}`)}
+              />
+              <SectionCard
+                title="Email us"
+                value={SUPPORT_EMAIL}
+                icon="mail-outline"
+                onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
+              />
             </View>
 
-            <View className="mb-5">
-              <Text className="mb-3 text-lg font-JakartaBold text-neutral-900">
-                Personal Information
-              </Text>
-              <View className="gap-3">
-                <ProfileSectionCard
-                  title="Full Name"
-                  value={fullName}
-                  icon="person"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "name", label: "Full Name" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Email"
-                  value={emailAddress}
-                  icon="mail"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "email", label: "Email" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Phone Number"
-                  value={phoneNumber}
-                  icon="call"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "phone_number", label: "Phone Number" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Gender"
-                  value={profileData.gender || "Not provided"}
-                  icon="male-female"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "gender", label: "Gender" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Date of Birth"
-                  value={profileData.date_of_birth || "Not provided"}
-                  icon="calendar"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "date_of_birth", label: "Date of Birth" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Home Address"
-                  value={profileData.home_address || "Not provided"}
-                  icon="home"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "home_address", label: "Home Address" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Emergency Contact"
-                  value={profileData.emergency_contact || "Not provided"}
-                  icon="warning"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "emergency_contact", label: "Emergency Contact" },
-                    })
-                  }
-                />
-              </View>
-            </View>
-
-            <View className="mb-5">
-              <Text className="mb-3 text-lg font-JakartaBold text-neutral-900">
-                Ride Preferences
-              </Text>
-              <View className="gap-3">
-                <ProfileSectionCard
-                  title="Preferred Vehicle"
-                  value={profileData.preferred_vehicle || "Standard"}
-                  icon="car"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "preferred_vehicle", label: "Preferred Vehicle" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Payment Method"
-                  value={profileData.payment_method || "Card / Apple Pay"}
-                  icon="card"
-                  onPress={() => router.push("/(root)/payment-methods")}
-                />
-                <ProfileSectionCard
-                  title="Favorite Locations"
-                  value={profileData.favorite_locations || "Add a favorite place"}
-                  icon="location"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "favorite_locations", label: "Favorite Locations" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Notifications"
-                  value={profileData.notifications_enabled ? "On" : "Off"}
-                  icon="notifications"
-                  onPress={() => handleTogglePreference("notifications_enabled", !profileData.notifications_enabled)}
-                />
-                <ProfileSectionCard
-                  title="Language"
-                  value={profileData.language || "English"}
-                  icon="language"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(root)/edit-profile",
-                      params: { field: "language", label: "Language" },
-                    })
-                  }
-                />
-                <ProfileSectionCard
-                  title="Dark Mode"
-                  value={profileData.dark_mode ? "On" : "Off"}
-                  icon="moon"
-                  onPress={() => handleTogglePreference("dark_mode", !profileData.dark_mode)}
-                />
-              </View>
-            </View>
-
-            <View className="mb-5 rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm shadow-neutral-200">
-              <Text className="text-lg font-JakartaBold text-neutral-900">
-                Ride History Summary
-              </Text>
-              <View className="mt-3 gap-2">
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-neutral-500">Completed Trips</Text>
-                  <Text className="font-JakartaSemiBold text-neutral-900">
-                    {rideSummary.completed_trips}
-                  </Text>
-                </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-neutral-500">Cancelled Trips</Text>
-                  <Text className="font-JakartaSemiBold text-neutral-900">
-                    {rideSummary.cancelled_trips}
-                  </Text>
-                </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-neutral-500">Money Spent</Text>
-                  <Text className="font-JakartaSemiBold text-neutral-900">
-                    ${typeof rideSummary.money_spent === "number" ? rideSummary.money_spent.toFixed(2) : "0.00"}
-                  </Text>
-                </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-neutral-500">Favorite Driver</Text>
-                  <Text className="font-JakartaSemiBold text-neutral-900">
-                    {rideSummary.favorite_driver}
-                  </Text>
-                </View>
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-sm text-neutral-500">Last Ride</Text>
-                  <Text className="font-JakartaSemiBold text-neutral-900">
-                    {rideSummary.last_ride}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View className="mb-5">
-              <Text className="mb-3 text-lg font-JakartaBold text-neutral-900">
-                Support
-              </Text>
-              <View className="gap-3">
-                <ProfileSectionCard title="Help Center" icon="help-circle" onPress={() => Alert.alert("Help Center", "Support articles will be available soon.")} />
-                <ProfileSectionCard title="Report a Problem" icon="alert-circle" onPress={() => Alert.alert("Report a Problem", "Your message will be routed to support.")} />
-                <ProfileSectionCard title="Privacy Policy" icon="shield-checkmark" onPress={() => Alert.alert("Privacy Policy", "Policy details will be added soon.")} />
-                <ProfileSectionCard title="Terms & Conditions" icon="document-text" onPress={() => Alert.alert("Terms", "Terms will be added soon.")} />
-                <ProfileSectionCard title="About" icon="information-circle" onPress={() => Alert.alert("About", "Uber-style profile experience.")} />
-                <ProfileSectionCard title="Contact Support" icon="chatbubble-ellipses" onPress={() => Alert.alert("Support", "Support team can be reached soon.")} />
-              </View>
-            </View>
-
-            <Pressable
-              onPress={handleLogout}
-              className="mb-5 rounded-2xl border border-red-200 bg-red-50 p-4"
-            >
-              <Text className="text-center text-sm font-JakartaBold text-red-600">
-                Logout
-              </Text>
-            </Pressable>
+            <SectionCard
+              title="Sign out"
+              icon="log-out-outline"
+              tone="danger"
+              onPress={handleSignOut}
+            />
           </>
         )}
       </ScrollView>
-
-      {saving ? (
-        <View className="absolute bottom-4 right-4 rounded-full bg-black/80 px-3 py-2">
-          <ActivityIndicator color="white" />
-        </View>
-      ) : null}
     </SafeAreaView>
   );
 };
