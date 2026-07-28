@@ -47,13 +47,15 @@ export async function POST(request: Request) {
     const supabase = await getSupabaseServerClient();
 
     const profilePayload =
-      profile_data && typeof profile_data === "object" ? profile_data : {};
+      profile_data && typeof profile_data === "object" ? profile_data : undefined;
 
-    const updatePayload: Record<string, unknown> = {
-      profile_data: {
-        ...(profilePayload || {}),
-      },
-    };
+    const updatePayload: Record<string, unknown> = {};
+
+    if (profilePayload) {
+      updatePayload.profile_data = {
+        ...profilePayload,
+      };
+    }
 
     if (typeof updates.name !== "undefined") {
       updatePayload.full_name = updates.name;
@@ -99,33 +101,62 @@ export async function POST(request: Request) {
       updatePayload.last_location_update = updates.last_location_update;
     }
 
-    let result: { data: any; error: any };
-    const { data, error } = await supabase
+    const { data: updatedDriver, error: updateError } = await supabase
       .from("drivers")
-      .upsert(
-        {
-          clerk_id: clerkId,
-          ...updatePayload,
-          full_name: typeof updates.name === "string" ? updates.name : "Driver",
-          email: typeof updates.email === "string" ? updates.email : null,
-          status: "pending",
-          verified: false,
-          profile_data: profilePayload || {},
-          is_online: typeof updates.is_online === "boolean" ? updates.is_online : false,
-          car_seats: typeof updates.car_seats === "number" ? updates.car_seats : null,
-          latitude: typeof updates.latitude === "number" ? updates.latitude : null,
-          longitude: typeof updates.longitude === "number" ? updates.longitude : null,
-          last_location_update:
-            typeof updates.last_location_update === "string"
-              ? updates.last_location_update
-              : null,
-        },
-        { onConflict: "clerk_id", ignoreDuplicates: false },
-      )
+      .update(updatePayload)
+      .eq("clerk_id", clerkId)
       .select()
-      .single();
+      .maybeSingle();
 
-    result = { data, error };
+    if (updateError) {
+      throw updateError;
+    }
+
+    const resultData =
+      updatedDriver ??
+      (
+        await supabase
+          .from("drivers")
+          .insert(
+            {
+              clerk_id: clerkId,
+              full_name: typeof updates.name === "string" ? updates.name : "Driver",
+              email: typeof updates.email === "string" ? updates.email : null,
+              profile_image_url:
+                typeof updates.profile_image_url === "string"
+                  ? updates.profile_image_url
+                  : null,
+              rating: typeof updates.rating === "number" ? updates.rating : null,
+              total_trips: typeof updates.total_trips === "number" ? updates.total_trips : null,
+              verification_percentage:
+                typeof updates.verification_percentage === "number"
+                  ? updates.verification_percentage
+                  : null,
+              car_seats: typeof updates.car_seats === "number" ? updates.car_seats : null,
+              is_online: typeof updates.is_online === "boolean" ? updates.is_online : false,
+              latitude: typeof updates.latitude === "number" ? updates.latitude : null,
+              longitude: typeof updates.longitude === "number" ? updates.longitude : null,
+              last_location_update:
+                typeof updates.last_location_update === "string"
+                  ? updates.last_location_update
+                  : null,
+              status: "pending",
+              verified: false,
+              profile_data: profilePayload ?? {},
+            },
+          )
+          .select()
+          .single()
+      ).data;
+
+    return Response.json({
+      data: resultData
+        ? {
+            ...resultData,
+            name: resultData.full_name ?? null,
+          }
+        : null,
+    });
 
     if (result.error) {
       throw result.error;

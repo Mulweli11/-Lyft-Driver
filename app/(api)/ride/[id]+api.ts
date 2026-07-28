@@ -45,3 +45,43 @@ export async function GET(request: Request, { id }: { id: string }) {
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function PATCH(request: Request, { id }: { id: string }) {
+  if (!id) {
+    return Response.json({ error: "Missing ride id" }, { status: 400 });
+  }
+
+  try {
+    const body = await request.json();
+    const { action } = body;
+
+    if (action !== "accept" && action !== "cancel") {
+      return Response.json({ error: "Invalid action" }, { status: 400 });
+    }
+
+    const supabase = await getSupabaseServerClient();
+    const updatePayload: Record<string, unknown> = {
+      status: action === "accept" ? "accepted" : "cancelled",
+    };
+
+    if (action === "cancel") {
+      updatePayload.payment_status = "cancelled";
+    }
+
+    const { data, error } = await supabase
+      .from("rides")
+      .update(updatePayload)
+      .eq("ride_id", id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    return Response.json({ data });
+  } catch (error: any) {
+    console.error("Error updating ride status:", error);
+    return Response.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
