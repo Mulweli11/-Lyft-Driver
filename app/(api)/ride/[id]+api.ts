@@ -23,7 +23,7 @@ export async function GET(request: Request, { id }: { id: string }) {
   }
 
   try {
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const { data, error } = await supabase
       .from("rides")
       .select("*")
@@ -54,7 +54,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
       );
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
 
     const { data: existing, error: readError } = await supabase
       .from("rides")

@@ -37,18 +37,26 @@ declare interface Ride {
   ride_id: string | number;
   origin_address: string;
   destination_address: string;
-  origin_latitude: number;
-  origin_longitude: number;
-  destination_latitude: number;
-  destination_longitude: number;
-  ride_time: number;
-  fare_price: number;
-  payment_status: string;
-  status: string;
-  driver_id: number;
+  origin_latitude: number | null;
+  origin_longitude: number | null;
+  destination_latitude: number | null;
+  destination_longitude: number | null;
+  ride_time?: string | number | null;
+  fare_price?: number | null;
+  payment_status?: string | null;
+  payment_method?: string | null;
+  stripe_payment_id?: string | null;
+  status?: string | null;
+  driver_id?: number | null;
   user_id: string;
-  created_at: string;
-  driver: {
+  created_at?: string | null;
+  scheduled_for?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
+  duration_minutes?: number | null;
+  seats_booked?: number | null;
+  driver?: {
     first_name: string;
     last_name: string;
     car_seats: number;
@@ -56,6 +64,10 @@ declare interface Ride {
   passenger?: {
     first_name: string;
     last_name: string;
+    phone_number?: string;
+    profile_image_url?: string;
+    rating?: number;
+    verification_status?: string;
   };
 }
 

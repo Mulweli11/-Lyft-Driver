@@ -1,13 +1,13 @@
 import { Ride } from "@/types/type";
 
 export const sortRides = (rides: Ride[]): Ride[] => {
-  const result = rides.sort((a, b) => {
-    const dateA = new Date(`${a.created_at}T${a.ride_time}`);
-    const dateB = new Date(`${b.created_at}T${b.ride_time}`);
-    return dateB.getTime() - dateA.getTime();
+  const result = [...rides].sort((a, b) => {
+    const dateA = new Date(a.scheduled_for ?? a.created_at ?? 0).getTime();
+    const dateB = new Date(b.scheduled_for ?? b.created_at ?? 0).getTime();
+    return dateA - dateB;
   });
 
-  return result.reverse();
+  return result;
 };
 
 export function formatTime(minutes?: number | null): string {

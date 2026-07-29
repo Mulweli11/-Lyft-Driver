@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       return Response.json({ error: "Missing clerkId" }, { status: 400 });
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
 
     const { data: userRow } = await supabase
       .from("users")

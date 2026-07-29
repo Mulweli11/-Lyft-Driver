@@ -2,20 +2,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-  Animated,
-  Dimensions,
-  Easing,
-  FlatList,
-  Image,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Animated,
+    Dimensions,
+    Easing,
+    FlatList,
+    Image,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import LogoLoader from "@/components/LogoLoader";
+import Logoloader from "@/components/Logoloader";
 import { onboarding } from "@/constants";
 
 const { width, height } = Dimensions.get("window");
@@ -292,7 +292,7 @@ const Welcome = () => {
       </Animated.View>
 
       {/* Logo loader covers the screen while the slide artwork decodes */}
-      {booting && <LogoLoader onFinish={() => setBooting(false)} duration={3000} />}
+      {booting && <Logoloader onFinish={() => setBooting(false)} duration={3000} />}
     </View>
   );
 };

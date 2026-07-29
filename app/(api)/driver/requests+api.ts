@@ -13,7 +13,7 @@ export async function GET(request: Request) {
       return Response.json({ error: "Missing clerkId" }, { status: 400 });
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
 
     const { data: driver, error: driverError } = await supabase
       .from("drivers")
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     // Not an error — a newly registered driver simply has no record yet.
     if (!driver) return Response.json({ data: [] });
 
-    const { data, error } = await supabase
+    const { data: rides, error } = await supabase
       .from("rides")
       .select(
         `ride_id,
@@ -46,10 +46,7 @@ export async function GET(request: Request) {
          created_at,
          completed_at,
          cancelled_at,
-         user_id,
-         passenger:users!rides_user_id_fkey(
-           name, phone_number, profile_image_url, rating, verification_status
-         )`,
+         user_id`,
       )
       .eq("driver_id", driver.id)
       .order("scheduled_for", { ascending: true, nullsFirst: false })
@@ -57,22 +54,54 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    const response = (data ?? []).map((ride: any) => {
-      const full = String(ride.passenger?.name ?? "").trim();
+    const ridesList = rides ?? [];
+    const passengerIds = Array.from(
+      new Set(
+        ridesList
+          .map((ride: any) => String(ride.user_id ?? "").trim())
+          .filter(Boolean),
+      ),
+    );
+
+    let passengersByClerkId: Record<string, any> = {};
+    if (passengerIds.length > 0) {
+      const { data: users, error: usersError } = await supabase
+        .from("users")
+        .select(
+          "clerk_id, name, phone_number, profile_image_url, rating, verification_status",
+        )
+        .in("clerk_id", passengerIds);
+
+      if (usersError) throw usersError;
+
+      passengersByClerkId = (users ?? []).reduce(
+        (acc: Record<string, any>, user: any) => {
+          if (user?.clerk_id) {
+            acc[String(user.clerk_id)] = user;
+          }
+          return acc;
+        },
+        {},
+      );
+    }
+
+    const response = ridesList.map((ride: any) => {
+      const passenger = passengersByClerkId[String(ride.user_id ?? "")];
+      const full = String(passenger?.name ?? "").trim();
       const [first, ...rest] = full.split(" ");
 
       return {
         ...ride,
         status: ride.status ?? "booked",
         seats_booked: ride.seats_booked ?? 1,
-        passenger: ride.passenger
+        passenger: passenger
           ? {
               first_name: first || "Passenger",
               last_name: rest.join(" "),
-              phone_number: ride.passenger.phone_number,
-              profile_image_url: ride.passenger.profile_image_url,
-              rating: ride.passenger.rating,
-              verification_status: ride.passenger.verification_status,
+              phone_number: passenger.phone_number,
+              profile_image_url: passenger.profile_image_url,
+              rating: passenger.rating,
+              verification_status: passenger.verification_status,
             }
           : null,
       };

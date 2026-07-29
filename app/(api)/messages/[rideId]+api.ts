@@ -43,7 +43,7 @@ export async function GET(request: Request, { rideId }: { rideId: string }) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const context = await loadParticipants(supabase, rideId);
 
     if (!context) {
@@ -111,7 +111,7 @@ export async function POST(request: Request, { rideId }: { rideId: string }) {
       return Response.json({ error: "Message is too long" }, { status: 400 });
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
     const context = await loadParticipants(supabase, rideId);
 
     if (!context) {

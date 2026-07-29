@@ -36,7 +36,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const supabase = getSupabaseServerClient();
+    const supabase = await getSupabaseServerClient();
 
     // Only approved drivers may publish — the whole safety model rests here.
     const { data: userRow } = await supabase
