@@ -24,6 +24,21 @@ function resolveDriverVerificationStatus(driver: any) {
   return "not_submitted";
 }
 
+function parseNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (normalized === "") return null;
+    const parsed = Number(normalized);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  return null;
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -37,7 +52,7 @@ export async function GET(request: Request) {
     const { data: profile, error } = await supabase
       .from("drivers")
       .select(
-        "id, full_name, email, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update, status, verified",
+        "id, full_name, email, phone_number, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update, status, verified",
       )
       .eq("clerk_id", clerkId)
       .maybeSingle();
@@ -98,20 +113,24 @@ export async function POST(request: Request) {
       updatePayload.profile_image_url = updates.profile_image_url;
     }
 
+    if (typeof updates.phone_number !== "undefined") {
+      updatePayload.phone_number = updates.phone_number;
+    }
+
     if (typeof updates.rating !== "undefined") {
-      updatePayload.rating = updates.rating;
+      updatePayload.rating = parseNumber(updates.rating);
     }
 
     if (typeof updates.total_trips !== "undefined") {
-      updatePayload.total_trips = updates.total_trips;
+      updatePayload.total_trips = parseNumber(updates.total_trips);
     }
 
     if (typeof updates.verification_percentage !== "undefined") {
-      updatePayload.verification_percentage = updates.verification_percentage;
+      updatePayload.verification_percentage = parseNumber(updates.verification_percentage);
     }
 
     if (typeof updates.car_seats !== "undefined") {
-      updatePayload.car_seats = updates.car_seats;
+      updatePayload.car_seats = parseNumber(updates.car_seats);
     }
 
     if (typeof updates.is_online !== "undefined") {
@@ -119,11 +138,11 @@ export async function POST(request: Request) {
     }
 
     if (typeof updates.latitude !== "undefined") {
-      updatePayload.latitude = updates.latitude;
+      updatePayload.latitude = parseNumber(updates.latitude);
     }
 
     if (typeof updates.longitude !== "undefined") {
-      updatePayload.longitude = updates.longitude;
+      updatePayload.longitude = parseNumber(updates.longitude);
     }
 
     if (typeof updates.last_location_update !== "undefined") {
@@ -171,20 +190,21 @@ export async function POST(request: Request) {
               clerk_id: clerkId,
               full_name: typeof updates.name === "string" ? updates.name : "Driver",
               email: typeof updates.email === "string" ? updates.email : null,
+              phone_number:
+                typeof updates.phone_number === "string"
+                  ? updates.phone_number
+                  : null,
               profile_image_url:
                 typeof updates.profile_image_url === "string"
                   ? updates.profile_image_url
                   : null,
-              rating: typeof updates.rating === "number" ? updates.rating : null,
-              total_trips: typeof updates.total_trips === "number" ? updates.total_trips : null,
-              verification_percentage:
-                typeof updates.verification_percentage === "number"
-                  ? updates.verification_percentage
-                  : null,
-              car_seats: typeof updates.car_seats === "number" ? updates.car_seats : null,
+              rating: parseNumber(updates.rating),
+              total_trips: parseNumber(updates.total_trips),
+              verification_percentage: parseNumber(updates.verification_percentage),
+              car_seats: parseNumber(updates.car_seats),
               is_online: typeof updates.is_online === "boolean" ? updates.is_online : false,
-              latitude: typeof updates.latitude === "number" ? updates.latitude : null,
-              longitude: typeof updates.longitude === "number" ? updates.longitude : null,
+              latitude: parseNumber(updates.latitude),
+              longitude: parseNumber(updates.longitude),
               last_location_update:
                 typeof updates.last_location_update === "string"
                   ? updates.last_location_update

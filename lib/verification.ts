@@ -71,9 +71,22 @@ export type VerificationStatus =
 
 export type PickedImage = {
   uri: string;
-  base64: string;
+  base64?: string;
   mimeType: string;
 };
+
+async function getImageBuffer(image: PickedImage): Promise<ArrayBuffer> {
+  if (image.base64) {
+    return decode(image.base64);
+  }
+
+  const response = await fetch(image.uri);
+  if (!response.ok) {
+    throw new Error("Unable to fetch image data for upload.");
+  }
+
+  return await response.arrayBuffer();
+}
 
 /** Human labels, kept in one place so the screen and any emails agree. */
 export const DOC_LABELS: Record<DocKind, { title: string; help: string }> = {
@@ -123,11 +136,11 @@ async function toPickedImage(
   if (result.canceled || !result.assets?.length) return null;
 
   const asset = result.assets[0];
-  if (!asset.base64) return null;
+  if (!asset.uri) return null;
 
   return {
     uri: asset.uri,
-    base64: asset.base64,
+    base64: asset.base64 ?? undefined,
     mimeType: asset.mimeType ?? "image/jpeg",
   };
 }
@@ -187,10 +200,11 @@ export async function uploadDocument(
 
   const extension = image.mimeType.includes("png") ? "png" : "jpg";
   const path = `${clerkId}/${kind}-${Date.now()}.${extension}`;
+  const buffer = await getImageBuffer(image);
 
   const { error } = await supabase.storage
     .from(BUCKET)
-    .upload(path, decode(image.base64), {
+    .upload(path, buffer, {
       contentType: image.mimeType,
       upsert: false,
     });
@@ -201,6 +215,45 @@ export async function uploadDocument(
   }
 
   return path;
+}
+
+// ─── Avatars ─────────────────────────────────────────────────────────────────
+// Profile photos are shown to drivers and other riders, so unlike ID documents
+// these live in a PUBLIC bucket called `avatars`.
+
+export async function uploadAvatar(
+  clerkId: string,
+  image: PickedImage,
+): Promise<string> {
+  const supabase = getSupabaseClient();
+
+  const extension = image.mimeType.includes("png") ? "png" : "jpg";
+  const path = `${clerkId}/avatar-${Date.now()}.${extension}`;
+  const buffer = await getImageBuffer(image);
+
+  const { error } = await supabase.storage
+    .from("avatars")
+    .upload(path, buffer, {
+      contentType: image.mimeType,
+      upsert: true,
+    });
+
+  if (error) {
+    console.error("Avatar upload failed:", error);
+    throw new Error("We couldn't upload that photo. Please try again.");
+  }
+
+  const { data, error: publicUrlError } = supabase.storage.from("avatars").getPublicUrl(path);
+  if (publicUrlError) {
+    console.error("Could not generate avatar public URL:", publicUrlError);
+    throw new Error("We uploaded your photo, but couldn't build a URL for it. Please try again.");
+  }
+
+  if (!data?.publicUrl) {
+    throw new Error("We couldn't generate a public URL for the avatar. Check your storage bucket settings.");
+  }
+
+  return data.publicUrl;
 }
 
 /**
@@ -258,35 +311,6 @@ export async function submitForReview(
       verification_submitted_at: new Date().toISOString(),
     }),
   });
-}
-
-// ─── Avatars ─────────────────────────────────────────────────────────────────
-// Profile photos are shown to drivers and other riders, so unlike ID documents
-// these live in a PUBLIC bucket called `avatars`.
-
-export async function uploadAvatar(
-  clerkId: string,
-  image: PickedImage,
-): Promise<string> {
-  const supabase = getSupabaseClient();
-
-  const extension = image.mimeType.includes("png") ? "png" : "jpg";
-  const path = `${clerkId}/avatar-${Date.now()}.${extension}`;
-
-  const { error } = await supabase.storage
-    .from("avatars")
-    .upload(path, decode(image.base64), {
-      contentType: image.mimeType,
-      upsert: true,
-    });
-
-  if (error) {
-    console.error("Avatar upload failed:", error);
-    throw new Error("We couldn't upload that photo. Please try again.");
-  }
-
-  const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-  return data.publicUrl;
 }
 
 // ─── Progress ────────────────────────────────────────────────────────────────
