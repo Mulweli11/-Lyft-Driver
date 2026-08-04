@@ -101,6 +101,8 @@ const DriverVerification = () => {
   const [vehicle, setVehicle] = useState<any>({});
   const [picked, setPicked] = useState<Picked>({});
   const [expiries, setExpiries] = useState<Expiries>({});
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyKind, setBusyKind] = useState<DocKind | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -122,6 +124,18 @@ const DriverVerification = () => {
       );
       setReason(record.driver_rejection_reason ?? null);
       setVehicle(record.profile_data?.vehicle ?? {});
+      setFirstName(
+        record.first_name ??
+          (typeof record.full_name === "string"
+            ? record.full_name.trim().split(/\s+/)[0] ?? ""
+            : ""),
+      );
+      setLastName(
+        record.last_name ??
+          (typeof record.full_name === "string"
+            ? record.full_name.trim().split(/\s+/).slice(1).join(" ")
+            : ""),
+      );
     } catch (error) {
       console.warn("Could not load driver verification", error);
     } finally {
@@ -146,6 +160,10 @@ const DriverVerification = () => {
     ((done + (vehicleComplete ? 1 : 0)) / (REQUIRED.length + 1)) * 100,
   );
 
+  const firstNameValid = firstName.trim().length > 0;
+  const lastNameValid = lastName.trim().length > 0;
+  const missingIdentity = !firstNameValid || !lastNameValid;
+
   const missingExpiry = useMemo(
     () =>
       EXPIRING_DOCS.some((kind) => picked[kind] && !expiries[kind]),
@@ -153,7 +171,11 @@ const DriverVerification = () => {
   );
 
   const canSubmit =
-    done === REQUIRED.length && vehicleComplete && !missingExpiry && !submitting;
+    done === REQUIRED.length &&
+    vehicleComplete &&
+    !missingExpiry &&
+    !missingIdentity &&
+    !submitting;
 
   const choose = (kind: DocKind) => {
     const run = async (fn: () => Promise<PickedImage | null>) => {
@@ -200,6 +222,9 @@ const DriverVerification = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clerkId: user.id,
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          full_name: `${firstName.trim()} ${lastName.trim()}`,
           driver_verification_status: "pending",
           driver_submitted_at: new Date().toISOString(),
           profile_data: { driver_documents: documents },
@@ -373,6 +398,38 @@ const DriverVerification = () => {
                 </View>
               </View>
 
+              <View className="mb-5 rounded-3xl border border-[#E2E9E5] bg-white p-5">
+                <Text className="mb-3 text-[15px] font-JakartaExtraBold text-[#101814]">
+                  Driver identity
+                </Text>
+                <View className="mb-4">
+                  <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+                    First name
+                  </Text>
+                  <TextInput
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    placeholder="Enter your first name"
+                    placeholderTextColor="#B4BEB9"
+                    autoCapitalize="words"
+                    className="rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#101814]"
+                  />
+                </View>
+                <View>
+                  <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+                    Last name
+                  </Text>
+                  <TextInput
+                    value={lastName}
+                    onChangeText={setLastName}
+                    placeholder="Enter your last name"
+                    placeholderTextColor="#B4BEB9"
+                    autoCapitalize="words"
+                    className="rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#101814]"
+                  />
+                </View>
+              </View>
+
               {/* Vehicle details */}
               <Text className="mb-3 text-[15px] font-JakartaExtraBold text-[#101814]">
                 Vehicle details
@@ -451,11 +508,13 @@ const DriverVerification = () => {
                     <Text className="mt-2.5 text-center text-[11.5px] font-Jakarta text-[#9BA6A1]">
                       {!vehicleComplete
                         ? "Add your vehicle details to continue"
-                        : missingExpiry
-                          ? "Add the expiry date for each document"
-                          : `${REQUIRED.length - done} document${
-                              REQUIRED.length - done === 1 ? "" : "s"
-                            } still needed`}
+                        : missingIdentity
+                          ? "Enter your first and last name"
+                          : missingExpiry
+                            ? "Add the expiry date for each document"
+                            : `${REQUIRED.length - done} document${
+                                REQUIRED.length - done === 1 ? "" : "s"
+                              } still needed`}
                     </Text>
                   )}
                 </View>

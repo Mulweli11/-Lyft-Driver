@@ -210,11 +210,16 @@ const SignUp = () => {
         console.log("Clerk User Created");
         console.log(completeSignUp);
 
+        const [firstName, ...lastNameParts] = form.name.trim().split(/\s+/);
+        const lastName = lastNameParts.join(" ");
+
         // Save user in Neon
         const response = await fetchAPI("/(api)/user", {
           method: "POST",
           body: JSON.stringify({
             name: form.name,
+            first_name: firstName || null,
+            last_name: lastName || null,
             email: form.email,
             clerkId: completeSignUp.createdUserId,
           }),

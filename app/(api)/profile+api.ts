@@ -39,6 +39,15 @@ function parseNumber(value: unknown): number | null {
   return null;
 }
 
+function splitFullName(value: unknown) {
+  const fullName = typeof value === "string" ? value.trim() : "";
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  return {
+    first_name: parts[0] ?? null,
+    last_name: parts.slice(1).join(" ") || null,
+  };
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -52,7 +61,7 @@ export async function GET(request: Request) {
     const { data: profile, error } = await supabase
       .from("drivers")
       .select(
-        "id, full_name, email, phone_number, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update, status, verified",
+        "id, first_name, last_name, full_name, email, phone_number, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update, status, verified",
       )
       .eq("clerk_id", clerkId)
       .maybeSingle();
@@ -62,6 +71,27 @@ export async function GET(request: Request) {
     }
 
     const driverVerificationStatus = resolveDriverVerificationStatus(profile);
+
+    if (
+      profile &&
+      typeof profile.full_name === "string" &&
+      (!profile.first_name || !profile.last_name)
+    ) {
+      const { first_name, last_name } = splitFullName(profile.full_name);
+      if (first_name || last_name) {
+        const { error: updateError } = await supabase
+          .from("drivers")
+          .update({ first_name, last_name })
+          .eq("clerk_id", clerkId);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        profile.first_name = first_name;
+        profile.last_name = last_name;
+      }
+    }
 
     return Response.json({
       data: profile
@@ -101,8 +131,30 @@ export async function POST(request: Request) {
       };
     }
 
+    if (typeof updates.full_name !== "undefined") {
+      updatePayload.full_name = updates.full_name;
+      if (typeof updates.first_name === "undefined" && typeof updates.last_name === "undefined") {
+        const split = splitFullName(updates.full_name);
+        updatePayload.first_name = split.first_name;
+        updatePayload.last_name = split.last_name;
+      }
+    }
+
+    if (typeof updates.first_name !== "undefined") {
+      updatePayload.first_name = updates.first_name;
+    }
+
+    if (typeof updates.last_name !== "undefined") {
+      updatePayload.last_name = updates.last_name;
+    }
+
     if (typeof updates.name !== "undefined") {
       updatePayload.full_name = updates.name;
+      if (typeof updates.first_name === "undefined" && typeof updates.last_name === "undefined") {
+        const split = splitFullName(updates.name);
+        updatePayload.first_name = split.first_name;
+        updatePayload.last_name = split.last_name;
+      }
     }
 
     if (typeof updates.email !== "undefined") {
@@ -180,6 +232,14 @@ export async function POST(request: Request) {
       throw updateError;
     }
 
+    const splitName = splitFullName(
+      typeof updates.full_name === "string"
+        ? updates.full_name
+        : typeof updates.name === "string"
+        ? updates.name
+        : null,
+    );
+
     const resultData =
       updatedDriver ??
       (
@@ -188,7 +248,20 @@ export async function POST(request: Request) {
           .insert(
             {
               clerk_id: clerkId,
-              full_name: typeof updates.name === "string" ? updates.name : "Driver",
+              first_name:
+                typeof updates.first_name === "string"
+                  ? updates.first_name
+                  : splitName.first_name,
+              last_name:
+                typeof updates.last_name === "string"
+                  ? updates.last_name
+                  : splitName.last_name,
+              full_name:
+                typeof updates.full_name === "string"
+                  ? updates.full_name
+                  : typeof updates.name === "string"
+                  ? updates.name
+                  : null,
               email: typeof updates.email === "string" ? updates.email : null,
               phone_number:
                 typeof updates.phone_number === "string"

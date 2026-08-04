@@ -9,9 +9,9 @@ export async function POST(request: Request) {
 
     console.log("Request Body:", body);
 
-    const { name, email, clerkId } = body;
+    const { name, first_name, last_name, email, clerkId } = body;
 
-    if (!name || !email || !clerkId) {
+    if ((!name && !first_name && !last_name) || !email || !clerkId) {
       return Response.json(
         {
           error: "Missing required fields",
@@ -42,12 +42,33 @@ export async function POST(request: Request) {
       );
     }
 
+    const firstName =
+      typeof first_name === "string" && first_name.trim().length > 0
+        ? first_name.trim()
+        : typeof name === "string"
+        ? name.trim().split(/\s+/)[0] || null
+        : null;
+
+    const lastName =
+      typeof last_name === "string" && last_name.trim().length > 0
+        ? last_name.trim()
+        : typeof name === "string"
+        ? name.trim().split(/\s+/).slice(1).join(" ") || null
+        : null;
+
+    const fullName =
+      typeof name === "string" && name.trim().length > 0
+        ? name.trim()
+        : [firstName, lastName].filter(Boolean).join(" ") || null;
+
     const { data, error } = await supabase
       .from("drivers")
       .insert({
         email,
         clerk_id: clerkId,
-        full_name: name,
+        first_name: firstName,
+        last_name: lastName,
+        full_name: fullName,
         status: "pending",
         verified: false,
         profile_data: {},
