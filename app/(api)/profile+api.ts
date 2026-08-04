@@ -1,5 +1,29 @@
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
+function resolveDriverVerificationStatus(driver: any) {
+  if (driver?.driver_verification_status) {
+    return driver.driver_verification_status;
+  }
+
+  if (driver?.verified === true) {
+    return "approved";
+  }
+
+  if (driver?.status === "approved") {
+    return "approved";
+  }
+
+  if (driver?.status === "pending") {
+    return "pending";
+  }
+
+  if (driver?.status === "rejected") {
+    return "rejected";
+  }
+
+  return "not_submitted";
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -12,7 +36,9 @@ export async function GET(request: Request) {
     const supabase = await getSupabaseServerClient();
     const { data: profile, error } = await supabase
       .from("drivers")
-      .select("id, full_name, email, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update")
+      .select(
+        "id, full_name, email, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update, status, verified",
+      )
       .eq("clerk_id", clerkId)
       .maybeSingle();
 
@@ -20,12 +46,15 @@ export async function GET(request: Request) {
       throw error;
     }
 
+    const driverVerificationStatus = resolveDriverVerificationStatus(profile);
+
     return Response.json({
       data: profile
         ? {
             ...profile,
             name: profile.full_name ?? null,
             profile_data: profile.profile_data ?? {},
+            driver_verification_status: driverVerificationStatus,
           }
         : null,
     });
@@ -101,6 +130,26 @@ export async function POST(request: Request) {
       updatePayload.last_location_update = updates.last_location_update;
     }
 
+    if (typeof updates.status !== "undefined") {
+      updatePayload.status = updates.status;
+    }
+
+    if (typeof updates.verified !== "undefined") {
+      updatePayload.verified = updates.verified;
+    }
+
+    if (typeof updates.driver_verification_status !== "undefined") {
+      updatePayload.driver_verification_status = updates.driver_verification_status;
+    }
+
+    if (typeof updates.driver_rejection_reason !== "undefined") {
+      updatePayload.driver_rejection_reason = updates.driver_rejection_reason;
+    }
+
+    if (typeof updates.driver_submitted_at !== "undefined") {
+      updatePayload.driver_submitted_at = updates.driver_submitted_at;
+    }
+
     const { data: updatedDriver, error: updateError } = await supabase
       .from("drivers")
       .update(updatePayload)
@@ -140,8 +189,22 @@ export async function POST(request: Request) {
                 typeof updates.last_location_update === "string"
                   ? updates.last_location_update
                   : null,
-              status: "pending",
-              verified: false,
+              status:
+                typeof updates.status === "string" ? updates.status : "pending",
+              verified:
+                typeof updates.verified === "boolean" ? updates.verified : false,
+              driver_verification_status:
+                typeof updates.driver_verification_status === "string"
+                  ? updates.driver_verification_status
+                  : null,
+              driver_rejection_reason:
+                typeof updates.driver_rejection_reason === "string"
+                  ? updates.driver_rejection_reason
+                  : null,
+              driver_submitted_at:
+                typeof updates.driver_submitted_at === "string"
+                  ? updates.driver_submitted_at
+                  : null,
               profile_data: profilePayload ?? {},
             },
           )
