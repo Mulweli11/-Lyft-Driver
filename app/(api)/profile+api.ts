@@ -186,7 +186,24 @@ export async function POST(request: Request) {
     }
 
     if (typeof updates.is_online !== "undefined") {
-      updatePayload.is_online = updates.is_online;
+      const currentDriver = await supabase
+        .from("drivers")
+        .select("status, verified, driver_verification_status")
+        .eq("clerk_id", clerkId)
+        .maybeSingle();
+
+      const verificationStatus =
+        currentDriver?.data?.driver_verification_status ??
+        currentDriver?.data?.status ??
+        "not_submitted";
+      const isApproved =
+        verificationStatus === "approved" || currentDriver?.data?.verified === true;
+
+      if (updates.is_online === true && !isApproved) {
+        updatePayload.is_online = false;
+      } else {
+        updatePayload.is_online = updates.is_online;
+      }
     }
 
     if (typeof updates.latitude !== "undefined") {

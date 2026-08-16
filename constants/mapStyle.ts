@@ -1,7 +1,7 @@
 const customMapStyle = [
   {
     elementType: "geometry",
-    stylers: [{ color: "#f5f5f5" }],
+    stylers: [{ color: "#E7EDF4" }],
   },
   {
     elementType: "labels.icon",
@@ -18,17 +18,17 @@ const customMapStyle = [
   {
     featureType: "road",
     elementType: "geometry",
-    stylers: [{ color: "#ffffff" }],
+    stylers: [{ color: "#F9FBFD" }],
   },
   {
     featureType: "road",
     elementType: "labels.text.fill",
-    stylers: [{ color: "#616161" }],
+    stylers: [{ color: "#1B2C4D" }],
   },
   {
     featureType: "water",
     elementType: "geometry",
-    stylers: [{ color: "#c9e6ff" }],
+    stylers: [{ color: "#D7E9F7" }],
   },
 ];
 

@@ -1,23 +1,56 @@
-import { useUser } from "@clerk/clerk-expo";
+﻿import { useUser } from "@clerk/clerk-expo";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 import Map from "@/components/Map";
 import { fetchAPI } from "@/lib/fetch";
 import { useLocationStore } from "@/store";
 import * as Location from "expo-location";
-import { useEffect, useState } from "react";
-import { Image, Modal, Pressable, Text, TouchableWithoutFeedback, View } from "react-native";
-
-const seatIcon = require("@/assets/images/car-seat.png");
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Animated, Pressable, Text, View } from "react-native";
 
 const Home = () => {
   const { user } = useUser();
-  const { setUserLocation, userLatitude, userLongitude } = useLocationStore();
+  const { setUserLocation, userLatitude, userLongitude, userAddress } = useLocationStore();
   const [isOnline, setIsOnline] = useState(false);
-  const [showOnlineSheet, setShowOnlineSheet] = useState(false);
+  const [showStatusCard, setShowStatusCard] = useState(false);
   const [availableSeats, setAvailableSeats] = useState(2);
+  const [canGoOnline, setCanGoOnline] = useState(false);
+  const [incomingRequest, setIncomingRequest] = useState<any>(null);
+  const [acceptedPassengerLocation, setAcceptedPassengerLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    address?: string | null;
+  } | null>(null);
+  const popupTranslateY = useRef(new Animated.Value(0)).current;
+
+  const loadDriverProfile = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const result = await fetchAPI(`/(api)/profile?clerkId=${encodeURIComponent(user.id)}`);
+      const profile = result?.data ?? null;
+      const verificationStatus =
+        profile?.driver_verification_status ?? profile?.status ?? "not_submitted";
+      const isApproved =
+        verificationStatus === "approved" || profile?.verified === true;
+
+      setCanGoOnline(isApproved);
+
+      if (!isApproved || profile?.verified === false) {
+        setIsOnline(false);
+      }
+    } catch (error) {
+      console.warn("Unable to load driver verification status", error);
+    }
+  }, [user?.id]);
 
   const persistDriverStatus = async (nextOnline: boolean, seats = availableSeats) => {
     if (!user?.id || userLatitude == null || userLongitude == null) {
+      return;
+    }
+
+    if (nextOnline && !canGoOnline) {
       return;
     }
 
@@ -41,13 +74,11 @@ const Home = () => {
 
   useEffect(() => {
     (async () => {
-      const { status } =
-        await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") return;
 
       const location = await Location.getCurrentPositionAsync({});
-
       const address = await Location.reverseGeocodeAsync({
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
@@ -64,100 +95,351 @@ const Home = () => {
   }, [setUserLocation]);
 
   useEffect(() => {
+    void loadDriverProfile();
+  }, [loadDriverProfile]);
+
+  useEffect(() => {
     if (!user?.id || userLatitude == null || userLongitude == null) {
       return;
     }
 
     void persistDriverStatus(isOnline, availableSeats);
-  }, [availableSeats, isOnline, user?.id, userLatitude, userLongitude]);
+  }, [availableSeats, isOnline, user?.id, userLatitude, userLongitude, canGoOnline]);
+
+  const loadIncomingRequests = useCallback(async () => {
+    if (!user?.id) return;
+
+    try {
+      const result = await fetchAPI(
+        `/(api)/driver/requests?clerkId=${encodeURIComponent(user.id)}`,
+      );
+      const rides = Array.isArray(result?.data) ? result.data : [];
+      const latestBooked = [...rides]
+        .filter((ride: any) => (ride.status ?? "booked") === "booked")
+        .sort(
+          (a: any, b: any) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+        )[0] ?? null;
+
+      setIncomingRequest(latestBooked);
+    } catch (error) {
+      console.warn("Unable to load incoming ride requests", error);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    void loadIncomingRequests();
+    const interval = setInterval(() => {
+      void loadIncomingRequests();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [loadIncomingRequests]);
+
+  useEffect(() => {
+    if (incomingRequest) {
+      setShowStatusCard(false);
+    }
+  }, [incomingRequest]);
+
+  const handleToggleOnline = () => {
+    if (!canGoOnline) {
+      Alert.alert(
+        "Verification required",
+        "Your account is not approved to drive yet. Complete verification before going online.",
+      );
+      return;
+    }
+
+    if (isOnline) {
+      setIsOnline(false);
+      setShowStatusCard(true);
+      void persistDriverStatus(false, availableSeats);
+      return;
+    }
+
+    setIsOnline(true);
+    setShowStatusCard(true);
+    void persistDriverStatus(true, availableSeats);
+  };
+
+  const dismissIncomingRequest = () => {
+    Animated.timing(popupTranslateY, {
+      toValue: 36,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      setIncomingRequest(null);
+      popupTranslateY.setValue(0);
+    });
+  };
+
+  const handleIncomingRequestAction = async (action: "accept" | "decline") => {
+    if (!incomingRequest?.ride_id) return;
+
+    try {
+      await fetchAPI(`/(api)/ride/${incomingRequest.ride_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+
+      if (action === "accept") {
+        const hasCoords =
+          incomingRequest.origin_latitude != null &&
+          incomingRequest.origin_longitude != null;
+
+        if (hasCoords) {
+          setAcceptedPassengerLocation({
+            latitude: Number(incomingRequest.origin_latitude),
+            longitude: Number(incomingRequest.origin_longitude),
+            address: incomingRequest.origin_address ?? null,
+          });
+        } else if (incomingRequest.origin_address) {
+          const geocoded = await Location.geocodeAsync(incomingRequest.origin_address);
+          if (geocoded?.[0]) {
+            setAcceptedPassengerLocation({
+              latitude: geocoded[0].latitude,
+              longitude: geocoded[0].longitude,
+              address: incomingRequest.origin_address,
+            });
+          }
+        }
+      } else {
+        setAcceptedPassengerLocation(null);
+      }
+
+      dismissIncomingRequest();
+      await loadIncomingRequests();
+    } catch (error) {
+      console.warn("Unable to respond to incoming ride request", error);
+      Alert.alert("Couldn't update the request", "Please try again in a moment.");
+    }
+  };
+
+  const handleSeatChange = (nextValue: number) => {
+    const safeValue = Math.max(1, nextValue);
+    setAvailableSeats(safeValue);
+    void persistDriverStatus(isOnline, safeValue);
+  };
+
+  const driverName = user?.firstName ? `${user.firstName}` : "Driver";
 
   return (
-    <View className="flex-1 bg-white">
-      <View className="absolute top-11 left-4 right-4 z-10 items-center">
-        <Pressable
-          onPress={() => {
-            if (isOnline) {
-              setIsOnline(false);
-              void persistDriverStatus(false, availableSeats);
-              return;
-            }
-            setShowOnlineSheet(true);
-          }}
-          className={`px-4 py-2 rounded-full ${isOnline ? "bg-green-600" : "bg-gray-600"}`}
-        >
-          <Text className="text-white font-semibold">
-            {isOnline ? "Online" : "Offline"}
+    <View className="flex-1 bg-[#DDEAF7]">
+      <Map
+        passengerLatitude={acceptedPassengerLocation?.latitude ?? null}
+        passengerLongitude={acceptedPassengerLocation?.longitude ?? null}
+        passengerAddress={acceptedPassengerLocation?.address ?? null}
+      />
+
+      <View className="absolute inset-x-0 top-0 z-20 px-4 pt-12">
+        <View className="flex-row items-center justify-between">
+          <View className="flex-row items-center gap-2.5">
+            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#F4F7FB] shadow-[0_8px_20px_rgba(17,37,74,0.12)]">
+              <Ionicons name="person" size={22} color="#1B2C4D" />
+            </View>
+            <View>
+              <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.14em] text-[#1B2C4D]">
+                Driver
+              </Text>
+              <Text className="text-[18px] font-JakartaExtraBold text-[#1B2C4D]">
+                {driverName}
+              </Text>
+            </View>
+          </View>
+
+          <Pressable
+            onPress={() => router.push("/(root)/(tabs)/chat")}
+            className="h-11 w-11 items-center justify-center rounded-2xl bg-[#F4F7FB] shadow-[0_8px_20px_rgba(17,37,74,0.1)]"
+          >
+            <Ionicons name="notifications-outline" size={22} color="#1B2C4D" />
+          </Pressable>
+        </View>
+
+        <View className="mt-4 rounded-[28px] bg-[#F4F7FB]/90 p-4 shadow-[0_18px_38px_rgba(17,37,74,0.12)]">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <View
+                className={`h-2.5 w-2.5 rounded-full ${
+                  isOnline ? "bg-[#F7A13B]" : "bg-[#C9D3E1]"
+                }`}
+              />
+              <Text className="text-[11px] font-JakartaBold uppercase tracking-[0.12em] text-[#1B2C4D]">
+                {isOnline ? "Online" : "Offline"}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={handleToggleOnline}
+              disabled={!canGoOnline}
+              className={`rounded-full px-3 py-1.5 ${
+                !canGoOnline ? "bg-[#DDE3EA]" : isOnline ? "bg-[#F7A13B]" : "bg-[#E2E8F2]"
+              }`}
+            >
+              <Text
+                className={`text-[11px] font-JakartaBold ${
+                  !canGoOnline ? "text-[#6D7A89]" : isOnline ? "text-white" : "text-[#1B2C4D]"
+                }`}
+              >
+                {!canGoOnline ? "Not approved" : isOnline ? "Available" : "Set online"}
+              </Text>
+            </Pressable>
+          </View>
+
+          <Text className="mt-4 text-[28px] font-JakartaExtraBold leading-[32px] text-[#1B2C4D]">
+            {isOnline ? "Ready to drive" : "Take your next trip"}
           </Text>
-        </Pressable>
+
+          <View className="mt-3 flex-row items-center gap-2 rounded-2xl bg-[#EBF0F6] px-3 py-2.5">
+            <Ionicons name="location-sharp" size={18} color="#1B2C4D" />
+            <Text className="flex-1 text-[13px] font-JakartaMedium text-[#1B2C4D]" numberOfLines={1}>
+              {userAddress ?? "Locating you..."}
+            </Text>
+          </View>
+
+        </View>
       </View>
 
-      <Modal
-        visible={showOnlineSheet}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowOnlineSheet(false)}
-      >
-        <TouchableWithoutFeedback onPress={() => setShowOnlineSheet(false)}>
-          <View className="flex-1 bg-black/30" />
-        </TouchableWithoutFeedback>
+      {incomingRequest && (
+        <Animated.View
+          className="absolute inset-x-0 bottom-[104px] z-30 px-4"
+          style={{ transform: [{ translateY: popupTranslateY }] }}
+        >
+          <View className="rounded-[28px] bg-white p-4 shadow-[0_18px_40px_rgba(17,37,74,0.18)]">
+            <View className="flex-row items-center justify-between">
+              <View className="flex-row items-center gap-2.5">
+                <View className="h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#E6F2EC]">
+                  <Ionicons name="person" size={18} color="#1B2C4D" />
+                </View>
 
-        <View className="absolute bottom-0 left-0 right-0 rounded-t-3xl bg-white px-6 py-4">
-          <View className="w-12 h-1.5 rounded-full bg-gray-300 self-center mb-3" />
-          <Text className="text-lg font-semibold text-gray-900">Go online</Text>
-          <Text className="mt-1 text-sm text-gray-600">
-            You are about to start accepting ride requests.
-          </Text>
+                <View>
+                  <Text className="text-[12px] font-JakartaBold uppercase tracking-[0.12em] text-[#778292]">
+                    New request
+                  </Text>
+                  <Text className="text-[15px] font-JakartaExtraBold text-[#1B2C4D]">
+                    {incomingRequest?.passenger?.first_name ?? "Passenger"}
+                  </Text>
+                </View>
+              </View>
 
-          <View className="mt-4 flex-row items-center justify-between rounded-xl border border-gray-200 px-3 py-3">
-            <View className="flex-row items-center gap-2">
-              <Image source={seatIcon} className="h-5 w-5" resizeMode="contain" />
-              <Text className="text-sm font-medium text-gray-700">Available seats</Text>
+              <View className="items-end">
+                <Text className="text-[11px] font-JakartaMedium text-[#7B8696]">Trip</Text>
+                <Text className="text-[17px] font-JakartaExtraBold text-[#1B2C4D]">
+                  R{((incomingRequest?.fare_price ?? 0) / 100).toFixed(2)}
+                </Text>
+              </View>
             </View>
 
-            <View className="flex-row items-center gap-2">
+            <View className="mt-4 border-t border-[#EAEFF4] pt-3">
+              <View className="flex-row items-center gap-3">
+                <View className="items-center">
+                  <View className="h-3 w-3 rounded-full bg-[#00155F]" />
+                  <View className="my-1 h-6 w-[2px] bg-[#D9E1EB]" />
+                  <View className="h-3 w-3 rounded-[4px] bg-[#FF7F50]" />
+                </View>
+
+                <View className="flex-1 gap-3">
+                  <View>
+                    <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.1em] text-[#7B8696]">
+                      Pickup point
+                    </Text>
+                    <Text className="mt-1 text-[13px] font-JakartaBold text-[#1B2C4D]" numberOfLines={2}>
+                      {incomingRequest?.origin_address ?? "Pickup location"}
+                    </Text>
+                  </View>
+
+                  <View>
+                    <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.1em] text-[#7B8696]">
+                      Drop off
+                    </Text>
+                    <Text className="mt-1 text-[13px] font-JakartaBold text-[#1B2C4D]" numberOfLines={2}>
+                      {incomingRequest?.destination_address ?? "Destination"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <View className="mt-4 flex-row gap-2">
               <Pressable
-                onPress={() => setAvailableSeats((prev) => Math.max(1, prev - 1))}
-                className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+                onPress={() => void handleIncomingRequestAction("decline")}
+                className="flex-1 rounded-full border border-[#DDE5EE] bg-[#F4F7FB] px-3 py-3"
               >
-                <Text className="text-lg font-semibold text-gray-700">−</Text>
+                <Text className="text-center text-[13px] font-JakartaBold text-[#1B2C4D]">
+                  Decline
+                </Text>
               </Pressable>
 
-              <Text className="min-w-6 text-center text-base font-semibold text-gray-900">
-                {availableSeats}
-              </Text>
-
               <Pressable
-                onPress={() => setAvailableSeats((prev) => prev + 1)}
-                className="h-8 w-8 items-center justify-center rounded-full bg-gray-100"
+                onPress={() => void handleIncomingRequestAction("accept")}
+                className="flex-1 rounded-full bg-[#00155F] px-3 py-3"
               >
-                <Text className="text-lg font-semibold text-gray-700">+</Text>
+                <Text className="text-center text-[13px] font-JakartaBold text-white">
+                  Accept
+                </Text>
               </Pressable>
             </View>
           </View>
+        </Animated.View>
+      )}
 
-          <View className="mt-4 flex-row gap-2">
-            <Pressable
-              onPress={() => setShowOnlineSheet(false)}
-              className="flex-1 items-center rounded-xl border border-gray-300 py-2.5"
-            >
-              <Text className="font-medium text-gray-700">Cancel</Text>
-            </Pressable>
+      {!incomingRequest && showStatusCard && (
+        <View className="absolute inset-x-0 bottom-[104px] z-20 px-4">
+          <View className="rounded-[28px] bg-[#11254A] p-4 shadow-[0_18px_40px_rgba(17,37,74,0.24)]">
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.14em] text-[#DDE9F7]">
+                  Status
+                </Text>
+                <Text className="mt-1 text-[20px] font-JakartaExtraBold text-white">
+                  {isOnline ? "Receiving rides" : "Not taking rides"}
+                </Text>
+              </View>
 
-            <Pressable
-              onPress={() => {
-                setIsOnline(true);
-                setShowOnlineSheet(false);
-                void persistDriverStatus(true, availableSeats);
-              }}
-              className="flex-1 items-center rounded-xl bg-green-600 py-2.5"
-            >
-              <Text className="font-medium text-white">Go online</Text>
-            </Pressable>
+              <Pressable
+                onPress={() => setShowStatusCard(true)}
+                className="flex-row items-center gap-2 rounded-full bg-white/10 px-3 py-2"
+              >
+                <View className={`h-2.5 w-2.5 rounded-full ${isOnline ? "bg-[#34D399]" : "bg-[#D7DED9]"}`} />
+                <Text className="text-[12px] font-JakartaBold text-white">
+                  {isOnline ? "Active" : "Offline"}
+                </Text>
+              </Pressable>
+            </View>
+
+            <View className="mt-4 flex-row items-center justify-between rounded-2xl bg-white/10 px-3 py-3">
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="car-sport" size={18} color="#F7A13B" />
+                <Text className="text-[13px] font-JakartaMedium text-[#E8EEF8]">
+                  Available seats
+                </Text>
+              </View>
+
+              <View className="flex-row items-center gap-2">
+                <Pressable
+                  onPress={() => handleSeatChange(availableSeats - 1)}
+                  className="h-8 w-8 items-center justify-center rounded-full bg-white/10"
+                >
+                  <Text className="text-[20px] font-JakartaBold text-white">−</Text>
+                </Pressable>
+
+                <Text className="min-w-8 text-center text-[16px] font-JakartaBold text-white">
+                  {availableSeats}
+                </Text>
+
+                <Pressable
+                  onPress={() => handleSeatChange(availableSeats + 1)}
+                  className="h-8 w-8 items-center justify-center rounded-full bg-white/10"
+                >
+                  <Text className="text-[20px] font-JakartaBold text-white">+</Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
         </View>
-      </Modal>
+      )}
 
-      <Map />
     </View>
   );
 };

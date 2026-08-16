@@ -99,9 +99,18 @@ const Chat = () => {
           );
         }}
         ListHeaderComponent={
-          <Text className="my-5 text-2xl font-JakartaExtraBold text-[#101814]">
-            Messages
-          </Text>
+          <View className="flex-row items-center gap-3 pb-4 pt-2">
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={8}
+              className="h-10 w-10 items-center justify-center rounded-xl border border-[#E2E9E5] bg-white active:opacity-70"
+            >
+              <Ionicons name="chevron-back" size={20} color="#101814" />
+            </Pressable>
+            <Text className="text-2xl font-JakartaExtraBold text-[#101814]">
+              Messages
+            </Text>
+          </View>
         }
         ListEmptyComponent={
           loading ? (

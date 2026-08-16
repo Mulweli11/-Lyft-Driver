@@ -26,8 +26,11 @@ declare interface MarkerData {
 }
 
 declare interface MapProps {
-  destinationLatitude?: number;
-  destinationLongitude?: number;
+  destinationLatitude?: number | null;
+  destinationLongitude?: number | null;
+  passengerLatitude?: number | null;
+  passengerLongitude?: number | null;
+  passengerAddress?: string | null;
   onDriverTimesCalculated?: (driversWithTimes: MarkerData[]) => void;
   selectedDriver?: number | null;
   onMapReady?: () => void;
