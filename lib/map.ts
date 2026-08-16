@@ -75,6 +75,93 @@ export const calculateRegion = ({
   };
 };
 
+export const decodePolyline = (encoded: string): Array<{ latitude: number; longitude: number }> => {
+  if (!encoded) return [];
+
+  const points: Array<{ latitude: number; longitude: number }> = [];
+  let index = 0;
+  const len = encoded.length;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < len) {
+    let result = 0;
+    let shift = 0;
+    let b = 0;
+
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+
+    const deltaLat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lat += deltaLat;
+
+    result = 0;
+    shift = 0;
+
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+
+    const deltaLng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+    lng += deltaLng;
+
+    points.push({
+      latitude: lat / 1e5,
+      longitude: lng / 1e5,
+    });
+  }
+
+  return points;
+};
+
+export const fetchRouteCoordinates = async ({
+  originLatitude,
+  originLongitude,
+  destinationLatitude,
+  destinationLongitude,
+}: {
+  originLatitude: number;
+  originLongitude: number;
+  destinationLatitude: number;
+  destinationLongitude: number;
+}) => {
+  const googleApiKey =
+    process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ?? process.env.EXPO_PUBLIC_MAPS_API_KEY;
+
+  try {
+    if (googleApiKey) {
+      const googleResponse = await fetch(
+        `https://maps.googleapis.com/maps/api/directions/json?origin=${originLatitude},${originLongitude}&destination=${destinationLatitude},${destinationLongitude}&mode=driving&key=${googleApiKey}`,
+      );
+      const googleData = await googleResponse.json();
+      const polyline = googleData?.routes?.[0]?.overview_polyline?.points;
+
+      if (polyline) {
+        return decodePolyline(polyline);
+      }
+    }
+
+    const osrmResponse = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${originLongitude},${originLatitude};${destinationLongitude},${destinationLatitude}?overview=full&geometries=geojson`,
+    );
+    const osrmData = await osrmResponse.json();
+    const routeCoordinates = osrmData?.routes?.[0]?.geometry?.coordinates ?? [];
+
+    return routeCoordinates.map(([longitude, latitude]: [number, number]) => ({
+      latitude,
+      longitude,
+    }));
+  } catch (error) {
+    console.warn("Unable to load route polyline", error);
+    return [];
+  }
+};
+
 export const calculateDriverTimes = async ({
   markers,
 }: {

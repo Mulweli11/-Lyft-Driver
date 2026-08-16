@@ -17,10 +17,9 @@ const Home = () => {
   const [availableSeats, setAvailableSeats] = useState(2);
   const [canGoOnline, setCanGoOnline] = useState(false);
   const [incomingRequest, setIncomingRequest] = useState<any>(null);
-  const [acceptedPassengerLocation, setAcceptedPassengerLocation] = useState<{
-    latitude: number;
-    longitude: number;
-    address?: string | null;
+  const [activeRideLocation, setActiveRideLocation] = useState<{
+    pickup: { latitude: number; longitude: number; address?: string | null };
+    destination: { latitude: number; longitude: number; address?: string | null };
   } | null>(null);
   const popupTranslateY = useRef(new Animated.Value(0)).current;
 
@@ -121,7 +120,51 @@ const Home = () => {
             new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
         )[0] ?? null;
 
+      const activeRide = [...rides]
+        .filter(
+          (ride: any) =>
+            (ride.status ?? "booked") === "accepted" ||
+            (ride.status ?? "booked") === "in_progress",
+        )
+        .sort(
+          (a: any, b: any) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime(),
+        )[0] ?? null;
+
       setIncomingRequest(latestBooked);
+
+      if (!activeRide) {
+        setActiveRideLocation(null);
+        return;
+      }
+
+      const pickupLatitude =
+        activeRide.origin_latitude != null ? Number(activeRide.origin_latitude) : null;
+      const pickupLongitude =
+        activeRide.origin_longitude != null ? Number(activeRide.origin_longitude) : null;
+      const destinationLatitude =
+        activeRide.destination_latitude != null ? Number(activeRide.destination_latitude) : null;
+      const destinationLongitude =
+        activeRide.destination_longitude != null ? Number(activeRide.destination_longitude) : null;
+
+      if (pickupLatitude == null || pickupLongitude == null) {
+        setActiveRideLocation(null);
+        return;
+      }
+
+      const pickup = {
+        latitude: pickupLatitude,
+        longitude: pickupLongitude,
+        address: activeRide.origin_address ?? null,
+      };
+
+      const destination = {
+        latitude: destinationLatitude ?? pickupLatitude,
+        longitude: destinationLongitude ?? pickupLongitude,
+        address: activeRide.destination_address ?? null,
+      };
+
+      setActiveRideLocation({ pickup, destination });
     } catch (error) {
       console.warn("Unable to load incoming ride requests", error);
     }
@@ -185,28 +228,46 @@ const Home = () => {
       });
 
       if (action === "accept") {
-        const hasCoords =
-          incomingRequest.origin_latitude != null &&
-          incomingRequest.origin_longitude != null;
+        const updatedRide = await fetchAPI(`/(api)/ride/${incomingRequest.ride_id}`);
+        const ride = updatedRide?.data ?? incomingRequest;
+        const hasCoords = ride?.origin_latitude != null && ride?.origin_longitude != null;
 
         if (hasCoords) {
-          setAcceptedPassengerLocation({
-            latitude: Number(incomingRequest.origin_latitude),
-            longitude: Number(incomingRequest.origin_longitude),
-            address: incomingRequest.origin_address ?? null,
+          setActiveRideLocation({
+            pickup: {
+              latitude: Number(ride.origin_latitude),
+              longitude: Number(ride.origin_longitude),
+              address: ride.origin_address ?? null,
+            },
+            destination: {
+              latitude:
+                ride.destination_latitude != null ? Number(ride.destination_latitude) : Number(ride.origin_latitude),
+              longitude:
+                ride.destination_longitude != null ? Number(ride.destination_longitude) : Number(ride.origin_longitude),
+              address: ride.destination_address ?? null,
+            },
           });
-        } else if (incomingRequest.origin_address) {
-          const geocoded = await Location.geocodeAsync(incomingRequest.origin_address);
+        } else if (ride?.origin_address) {
+          const geocoded = await Location.geocodeAsync(ride.origin_address);
           if (geocoded?.[0]) {
-            setAcceptedPassengerLocation({
-              latitude: geocoded[0].latitude,
-              longitude: geocoded[0].longitude,
-              address: incomingRequest.origin_address,
+            setActiveRideLocation({
+              pickup: {
+                latitude: geocoded[0].latitude,
+                longitude: geocoded[0].longitude,
+                address: ride.origin_address,
+              },
+              destination: {
+                latitude:
+                  ride.destination_latitude != null ? Number(ride.destination_latitude) : geocoded[0].latitude,
+                longitude:
+                  ride.destination_longitude != null ? Number(ride.destination_longitude) : geocoded[0].longitude,
+                address: ride.destination_address ?? null,
+              },
             });
           }
         }
       } else {
-        setAcceptedPassengerLocation(null);
+        setActiveRideLocation(null);
       }
 
       dismissIncomingRequest();
@@ -228,9 +289,12 @@ const Home = () => {
   return (
     <View className="flex-1 bg-[#DDEAF7]">
       <Map
-        passengerLatitude={acceptedPassengerLocation?.latitude ?? null}
-        passengerLongitude={acceptedPassengerLocation?.longitude ?? null}
-        passengerAddress={acceptedPassengerLocation?.address ?? null}
+        passengerLatitude={activeRideLocation?.pickup.latitude ?? null}
+        passengerLongitude={activeRideLocation?.pickup.longitude ?? null}
+        passengerAddress={activeRideLocation?.pickup.address ?? null}
+        dropoffLatitude={activeRideLocation?.destination.latitude ?? null}
+        dropoffLongitude={activeRideLocation?.destination.longitude ?? null}
+        dropoffAddress={activeRideLocation?.destination.address ?? null}
       />
 
       <View className="absolute inset-x-0 top-0 z-20 px-4 pt-12">
