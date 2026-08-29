@@ -3,7 +3,7 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { LogBox, View } from "react-native";
+import { LogBox, Platform, View } from "react-native";
 import "react-native-reanimated";
 import "../global.css";
 
@@ -37,7 +37,7 @@ export default function RootLayout() {
   });
 
   // Tracks whether the animated splash has played out and faded away
-  const [splashDone, setSplashDone] = useState(false);
+  const [splashDone, setSplashDone] = useState(Platform.OS === "web");
 
   useEffect(() => {
     if (loaded) {

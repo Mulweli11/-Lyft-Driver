@@ -1,7 +1,19 @@
 ﻿import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
+import { ActivityIndicator, Platform, Text, View } from "react-native";
+
+let MapView: any = null;
+let Marker: any = null;
+let Polyline: any = null;
+let PROVIDER_DEFAULT: any = null;
+
+if (Platform.OS !== "web") {
+  const reactNativeMaps = require("react-native-maps");
+  MapView = reactNativeMaps.default;
+  Marker = reactNativeMaps.Marker;
+  Polyline = reactNativeMaps.Polyline;
+  PROVIDER_DEFAULT = reactNativeMaps.PROVIDER_DEFAULT;
+}
 
 import customMapStyle from "@/constants/mapStyle";
 import { calculateRegion, fetchRouteCoordinates } from "@/lib/map";
@@ -79,6 +91,16 @@ export default function Map({
     destinationLongitude: dropoffLongitude ?? passengerLongitude ?? null,
   });
 
+  if (Platform.OS === "web" || !MapView || !Marker || !Polyline) {
+    return (
+      <View className="flex-1 items-center justify-center bg-[#DDEAF7] px-6">
+        <Text className="text-center text-[13px] font-Jakarta text-[#0E5C3F]">
+          Map preview is available on mobile. Your trip details are still available below.
+        </Text>
+      </View>
+    );
+  }
+
   if (userLatitude == null || userLongitude == null) {
     return (
       <View className="flex-1 items-center justify-center bg-[#DDEAF7]">
@@ -116,7 +138,6 @@ export default function Map({
           lineDashPattern={[]}
         />
       )}
-
 
       <Marker
         coordinate={{

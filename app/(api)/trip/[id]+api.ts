@@ -1,10 +1,10 @@
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
-// A trip is the driver's OFFER (route, departure, seats, price).
-// A ride is a passenger's booking against it. Separate tables, because one
-// trip can hold several bookings.
+export async function PATCH(request: Request, { id }: { id: string }) {
+  if (!id) {
+    return Response.json({ error: "Missing trip id" }, { status: 400 });
+  }
 
-export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
@@ -44,8 +44,6 @@ export async function POST(request: Request) {
       .eq("clerk_id", clerkId)
       .maybeSingle();
 
-    // First trip ever: create the driver row from their profile and carry over the
-    // existing verification state if it has already been set on the user record.
     if (!driver) {
       const { data: profile } = await supabase
         .from("users")
@@ -88,26 +86,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: existingActiveTrip, error: existingTripError } = await supabase
+    const { data: currentTrip, error: findError } = await supabase
       .from("offer_trip")
-      .select("id")
+      .select("id, driver_id")
+      .eq("id", Number(id))
       .eq("driver_id", driver.id)
-      .eq("status", "active")
-      .limit(1)
       .maybeSingle();
 
-    if (existingTripError && existingTripError.code !== "PGRST116") {
-      throw existingTripError;
-    }
-
-    if (existingActiveTrip) {
-      return Response.json(
-        {
-          error:
-            "You already have an active trip. Edit your current trip instead of creating another one.",
-        },
-        { status: 409 },
-      );
+    if (findError) throw findError;
+    if (!currentTrip) {
+      return Response.json({ error: "Trip not found" }, { status: 404 });
     }
 
     const departureDate = new Date(departure_at);
@@ -121,8 +109,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await supabase
       .from("offer_trip")
-      .insert({
-        driver_id: driver.id,
+      .update({
         leaving_from: origin_address,
         going_to: destination_address,
         leaving_from_lat: origin_latitude,
@@ -134,23 +121,23 @@ export async function POST(request: Request) {
         repeat_weekly: Array.isArray(repeat_days) && repeat_days.length > 0,
         repeat_days: Array.isArray(repeat_days) ? repeat_days : [],
         seats_available: seats_total,
-        seats_booked: 0,
         price_per_seat,
-        service_fee_percentage: 10.0,
         status: "active",
       })
+      .eq("id", Number(id))
+      .eq("driver_id", driver.id)
       .select()
       .single();
 
     if (error) throw error;
 
-    return Response.json({ data }, { status: 201 });
+    return Response.json({ data }, { status: 200 });
   } catch (error) {
     const details =
       error instanceof Error
         ? error.message
         : JSON.stringify(error, Object.getOwnPropertyNames(error as object), 2);
-    console.error("Error creating trip:", error);
+    console.error("Error updating trip:", error);
     return Response.json(
       {
         error: "Internal Server Error",

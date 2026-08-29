@@ -1,7 +1,6 @@
 import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
 import CustomButton from "@/components/CustomButton";
@@ -47,6 +46,43 @@ const CreateTrip = () => {
   const [time, setTime] = useState<string | null>(null);
   const [days, setDays] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [publishedTrips, setPublishedTrips] = useState<any[]>([]);
+  const [showPublishedTrips, setShowPublishedTrips] = useState(false);
+  const [editingTripId, setEditingTripId] = useState<number | string | null>(null);
+  const [tripCheckComplete, setTripCheckComplete] = useState(false);
+  const [tripLoadError, setTripLoadError] = useState<string | null>(null);
+
+  const loadExistingTrips = async () => {
+    if (!user?.id) return [];
+
+    try {
+      const response = await fetchAPI(`/(api)/trip?clerkId=${encodeURIComponent(user.id)}`);
+      const trips = Array.isArray(response?.data) ? response.data : [];
+
+      setTripLoadError(null);
+      setPublishedTrips(trips);
+      setShowPublishedTrips(trips.length > 0);
+      setTripCheckComplete(true);
+
+      return trips;
+    } catch (error: any) {
+      setTripLoadError(error?.message ?? "Unable to load your published trip.");
+      setPublishedTrips([]);
+      setShowPublishedTrips(false);
+      setTripCheckComplete(true);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.id) {
+      setTripCheckComplete(false);
+      return;
+    }
+
+    setTripCheckComplete(false);
+    loadExistingTrips().catch(() => {});
+  }, [user?.id]);
 
   const ready = Boolean(userAddress && destinationAddress && time);
 
@@ -82,36 +118,75 @@ const CreateTrip = () => {
   const publish = async () => {
     if (!ready || !user?.id) return;
     setSaving(true);
+    const tripIdToEdit = editingTripId;
 
     try {
+      const existingTrips = await loadExistingTrips();
+
+      if (existingTrips.length > 0 && !tripIdToEdit) {
+        setPublishedTrips(existingTrips);
+        setShowPublishedTrips(true);
+        return;
+      }
+
       const departure = new Date();
       if (when === "tomorrow") departure.setDate(departure.getDate() + 1);
       const [h, m] = (time as string).split(":").map(Number);
       departure.setHours(h, m, 0, 0);
 
-      await fetchAPI("/(api)/trip/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clerkId: user.id,
-          origin_address: userAddress,
-          origin_latitude: userLatitude,
-          origin_longitude: userLongitude,
-          destination_address: destinationAddress,
-          destination_latitude: destinationLatitude,
-          destination_longitude: destinationLongitude,
-          departure_at: departure.toISOString(),
-          seats_total: seats,
-          price_per_seat: price,
-          repeat_days: days,
-        }),
-      });
+      const payload = {
+        clerkId: user.id,
+        origin_address: userAddress,
+        origin_latitude: userLatitude,
+        origin_longitude: userLongitude,
+        destination_address: destinationAddress,
+        destination_latitude: destinationLatitude,
+        destination_longitude: destinationLongitude,
+        departure_at: departure.toISOString(),
+        seats_total: seats,
+        price_per_seat: price,
+        repeat_days: days,
+      };
 
-      Alert.alert(
-        "Trip published",
-        "Passengers on your route can now book a seat. You'll be notified for each booking.",
-        [{ text: "OK", onPress: () => router.back() }],
-      );
+      const tripResponse = tripIdToEdit
+        ? await fetchAPI(`/(api)/trip/${tripIdToEdit}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+        : await fetchAPI("/(api)/trip/create", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+      const tripRecord = {
+        id: tripIdToEdit ?? Date.now(),
+        leaving_from: userAddress,
+        going_to: destinationAddress,
+        leaving_from_lat: userLatitude,
+        leaving_from_lng: userLongitude,
+        going_to_lat: destinationLatitude,
+        going_to_lng: destinationLongitude,
+        departure_date: departure.toISOString().slice(0, 10),
+        departure_time: time,
+        seats_available: seats,
+        price_per_seat: price,
+        repeat_days: days,
+        status: "active",
+        ...(tripResponse?.data ?? {}),
+      };
+
+      if (tripIdToEdit) {
+        setPublishedTrips((prev) =>
+          prev.map((trip) => (trip.id === tripIdToEdit ? tripRecord : trip)),
+        );
+      } else {
+        setPublishedTrips((prev) => [tripRecord, ...prev]);
+      }
+
+      setEditingTripId(null);
+      setShowPublishedTrips(true);
     } catch (error: any) {
       Alert.alert(
         "Couldn't publish",
@@ -121,6 +196,154 @@ const CreateTrip = () => {
       setSaving(false);
     }
   };
+
+  const handleEditTrip = (trip: any) => {
+    if (!trip) return;
+
+    if (trip.leaving_from) {
+      setUserLocation({
+        latitude: trip.leaving_from_lat ?? userLatitude ?? 0,
+        longitude: trip.leaving_from_lng ?? userLongitude ?? 0,
+        address: trip.leaving_from,
+      });
+    }
+
+    if (trip.going_to) {
+      setDestinationLocation({
+        latitude: trip.going_to_lat ?? destinationLatitude ?? 0,
+        longitude: trip.going_to_lng ?? destinationLongitude ?? 0,
+        address: trip.going_to,
+      });
+    }
+
+    setSeats(Number(trip.seats_available ?? 3));
+    setPrice(Number(trip.price_per_seat ?? 40));
+    setDays(Array.isArray(trip.repeat_days) ? trip.repeat_days : []);
+
+    if (trip.departure_time) {
+      setTime(trip.departure_time);
+    }
+
+    const tripDate = trip.departure_date ? new Date(trip.departure_date) : new Date();
+    const isToday = tripDate.toDateString() === new Date().toDateString();
+    setWhen(isToday ? "today" : "tomorrow");
+    setEditingTripId(trip.id ?? null);
+    setShowPublishedTrips(false);
+  };
+
+  if (tripCheckComplete && showPublishedTrips && publishedTrips.length > 0) {
+    return (
+      <RideLayout
+        title="Your trips"
+        subtitle="Your published rides"
+        snapPoints={["62%", "92%"]}
+      >
+        <View className="flex-1">
+          <Pressable
+            onPress={() => {
+              setEditingTripId(null);
+              setShowPublishedTrips(false);
+            }}
+            className="mb-4 rounded-2xl bg-[#0E5C3F] px-4 py-3"
+          >
+            <Text className="text-center text-[14px] font-JakartaBold text-white">
+              + Offer another trip
+            </Text>
+          </Pressable>
+
+          <Text className="mb-3 text-[13px] font-Jakarta text-[#68756F]">
+            Your published rides appear here, and you can edit them before departure.
+          </Text>
+
+          {publishedTrips.map((trip) => (
+            <View
+              key={trip.id}
+              className="mb-3 rounded-2xl border border-[#E2E9E5] bg-white p-4"
+            >
+              <View className="mb-2 flex-row items-center justify-between">
+                <Text className="text-[15px] font-JakartaExtraBold text-[#101814]">
+                  {trip.leaving_from}
+                </Text>
+                <Text className="text-[12px] font-JakartaBold text-[#0E5C3F]">
+                  {trip.status ?? "active"}
+                </Text>
+              </View>
+
+              <Text className="mb-2 text-[13px] font-JakartaMedium text-[#4A5450]">
+                to {trip.going_to}
+              </Text>
+
+              <View className="mb-2 flex-row flex-wrap gap-2">
+                <Text className="rounded-full bg-[#E6F2EC] px-2 py-1 text-[11px] font-JakartaBold text-[#0E5C3F]">
+                  {trip.departure_date}
+                </Text>
+                <Text className="rounded-full bg-[#EEF1F0] px-2 py-1 text-[11px] font-JakartaBold text-[#68756F]">
+                  {trip.departure_time}
+                </Text>
+                <Text className="rounded-full bg-[#EEF1F0] px-2 py-1 text-[11px] font-JakartaBold text-[#68756F]">
+                  {trip.seats_available} seats
+                </Text>
+              </View>
+
+              <Text className="mb-3 text-[13px] font-Jakarta text-[#68756F]">
+                R{trip.price_per_seat} per seat
+              </Text>
+
+              <Pressable
+                onPress={() => handleEditTrip(trip)}
+                className="rounded-xl border border-[#D8E8E2] bg-[#F5FAF8] px-3 py-2"
+              >
+                <Text className="text-center text-[13px] font-JakartaBold text-[#0E5C3F]">
+                  Edit trip
+                </Text>
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      </RideLayout>
+    );
+  }
+
+  if (!tripCheckComplete) {
+    return (
+      <RideLayout
+        title="Offer a trip"
+        subtitle="Checking your current trip"
+        snapPoints={["62%", "92%"]}
+      >
+        <View className="flex-1 items-center justify-center py-10">
+          <Text className="text-[13px] font-Jakarta text-[#68756F]">
+            Loading your trip…
+          </Text>
+        </View>
+      </RideLayout>
+    );
+  }
+
+  if (tripLoadError) {
+    return (
+      <RideLayout
+        title="Offer a trip"
+        subtitle="Could not load your current trip"
+        snapPoints={["62%", "92%"]}
+      >
+        <View className="flex-1 items-center justify-center py-10">
+          <Text className="mb-4 text-center text-[13px] font-Jakarta text-[#68756F]">
+            Your trip could not be loaded. Try again before publishing.
+          </Text>
+          <Pressable
+            onPress={() => {
+              setTripCheckComplete(false);
+              loadExistingTrips().catch(() => {});
+            }}
+            className="rounded-xl bg-[#0E5C3F] px-5 py-3"
+          >
+            <Text className="text-[13px] font-JakartaBold text-white">Try again</Text>
+          </Pressable>
+        </View>
+      </RideLayout>
+    );
+  }
 
   return (
     <RideLayout

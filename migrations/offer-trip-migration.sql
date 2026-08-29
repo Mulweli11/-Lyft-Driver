@@ -60,5 +60,24 @@ create table if not exists public.offer_trip (
 create index if not exists offer_trip_driver_id_idx
   on public.offer_trip (driver_id);
 
+with ranked_active_trips as (
+  select
+    id,
+    row_number() over (
+      partition by driver_id
+      order by created_at desc, id desc
+    ) as row_num
+  from public.offer_trip
+  where status = 'active'
+)
+delete from public.offer_trip trip
+using ranked_active_trips ranked
+where trip.id = ranked.id
+  and ranked.row_num > 1;
+
+create unique index if not exists offer_trip_single_active_trip_per_driver_idx
+  on public.offer_trip (driver_id)
+  where status = 'active';
+
 create index if not exists offer_trip_departure_date_idx
   on public.offer_trip (departure_date);
