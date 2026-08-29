@@ -3,24 +3,24 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Linking,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Linking,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SectionCard, StatCard } from "@/components/Cards";
 import { fetchAPI } from "@/lib/fetch";
 import {
-  PickedImage,
-  captureImage,
-  pickFromLibrary,
-  uploadAvatar,
+    PickedImage,
+    captureImage,
+    pickFromLibrary,
+    uploadAvatar,
 } from "@/lib/verification";
 
 // Replace with your real support details
@@ -232,6 +232,7 @@ const Profile = () => {
               />
               <SectionCard
                 title="Offer a trip"
+                value="List the seats you have spare"
                 icon="add-circle-outline"
                 onPress={() => router.push("/(root)/create-trip")}
               />
