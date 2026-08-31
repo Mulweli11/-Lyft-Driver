@@ -1,4 +1,4 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
@@ -29,6 +29,7 @@ const DAYS = [
 
 const CreateTrip = () => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const {
     userAddress,
     userLatitude,
@@ -51,12 +52,16 @@ const CreateTrip = () => {
   const [editingTripId, setEditingTripId] = useState<number | string | null>(null);
   const [tripCheckComplete, setTripCheckComplete] = useState(false);
   const [tripLoadError, setTripLoadError] = useState<string | null>(null);
+  const [cancellingTripId, setCancellingTripId] = useState<number | string | null>(null);
 
   const loadExistingTrips = async () => {
     if (!user?.id) return [];
 
     try {
-      const response = await fetchAPI(`/(api)/trip?clerkId=${encodeURIComponent(user.id)}`);
+      const token = await getToken();
+      const response = await fetchAPI("/(api)/trip", {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const trips = Array.isArray(response?.data) ? response.data : [];
 
       setTripLoadError(null);
@@ -135,7 +140,6 @@ const CreateTrip = () => {
       departure.setHours(h, m, 0, 0);
 
       const payload = {
-        clerkId: user.id,
         origin_address: userAddress,
         origin_latitude: userLatitude,
         origin_longitude: userLongitude,
@@ -148,15 +152,20 @@ const CreateTrip = () => {
         repeat_days: days,
       };
 
+      const token = await getToken();
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      };
       const tripResponse = tripIdToEdit
         ? await fetchAPI(`/(api)/trip/${tripIdToEdit}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers,
             body: JSON.stringify(payload),
           })
         : await fetchAPI("/(api)/trip/create", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+          headers,
             body: JSON.stringify(payload),
           });
 
@@ -231,6 +240,43 @@ const CreateTrip = () => {
     setShowPublishedTrips(false);
   };
 
+  const cancelTrip = (trip: any) => {
+    if (!trip?.id || !user?.id) return;
+
+    Alert.alert(
+      "Cancel this trip?",
+      "Passengers will no longer be able to book this trip.",
+      [
+        { text: "Keep trip", style: "cancel" },
+        {
+          text: "Cancel trip",
+          style: "destructive",
+          onPress: async () => {
+            setCancellingTripId(trip.id);
+            try {
+              const token = await getToken();
+              await fetchAPI(`/(api)/trip/${trip.id}`, {
+                method: "DELETE",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+              });
+
+              setPublishedTrips((prev) => prev.filter((item) => item.id !== trip.id));
+              setEditingTripId(null);
+              setShowPublishedTrips(false);
+            } catch (error: any) {
+              Alert.alert(
+                "Couldn't cancel trip",
+                error?.message ?? "Please try again.",
+              );
+            } finally {
+              setCancellingTripId(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   if (tripCheckComplete && showPublishedTrips && publishedTrips.length > 0) {
     return (
       <RideLayout
@@ -295,6 +341,16 @@ const CreateTrip = () => {
               >
                 <Text className="text-center text-[13px] font-JakartaBold text-[#0E5C3F]">
                   Edit trip
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => cancelTrip(trip)}
+                disabled={cancellingTripId === trip.id}
+                className="mt-2 rounded-xl border border-[#F0CACA] bg-[#FEF3F3] px-3 py-2"
+              >
+                <Text className="text-center text-[13px] font-JakartaBold text-[#B02A2A]">
+                  {cancellingTripId === trip.id ? "Cancelling..." : "Cancel trip"}
                 </Text>
               </Pressable>
             </View>

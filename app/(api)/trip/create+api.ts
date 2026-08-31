@@ -1,3 +1,4 @@
+import { requireClerkUser } from "@/lib/server-auth";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 // A trip is the driver's OFFER (route, departure, seats, price).
@@ -8,7 +9,6 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const {
-      clerkId,
       origin_address,
       origin_latitude,
       origin_longitude,
@@ -22,7 +22,6 @@ export async function POST(request: Request) {
     } = body;
 
     if (
-      !clerkId ||
       !origin_address ||
       !destination_address ||
       origin_latitude == null ||
@@ -37,6 +36,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await getSupabaseServerClient();
+    const clerkId = await requireClerkUser(request);
 
     let { data: driver } = await supabase
       .from("drivers")
@@ -146,6 +146,7 @@ export async function POST(request: Request) {
 
     return Response.json({ data }, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     const details =
       error instanceof Error
         ? error.message

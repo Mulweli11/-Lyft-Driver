@@ -1,3 +1,4 @@
+import { requireClerkUser } from "@/lib/server-auth";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function PATCH(request: Request, { id }: { id: string }) {
@@ -8,7 +9,6 @@ export async function PATCH(request: Request, { id }: { id: string }) {
   try {
     const body = await request.json();
     const {
-      clerkId,
       origin_address,
       origin_latitude,
       origin_longitude,
@@ -22,7 +22,6 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     } = body;
 
     if (
-      !clerkId ||
       !origin_address ||
       !destination_address ||
       origin_latitude == null ||
@@ -37,6 +36,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
     }
 
     const supabase = await getSupabaseServerClient();
+    const clerkId = await requireClerkUser(request);
 
     let { data: driver } = await supabase
       .from("drivers")
@@ -133,6 +133,7 @@ export async function PATCH(request: Request, { id }: { id: string }) {
 
     return Response.json({ data }, { status: 200 });
   } catch (error) {
+    if (error instanceof Response) return error;
     const details =
       error instanceof Error
         ? error.message
@@ -143,6 +144,51 @@ export async function PATCH(request: Request, { id }: { id: string }) {
         error: "Internal Server Error",
         details,
       },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(request: Request, { id }: { id: string }) {
+  if (!id) {
+    return Response.json({ error: "Missing trip id" }, { status: 400 });
+  }
+
+  try {
+    const clerkId = await requireClerkUser(request);
+
+    const supabase = await getSupabaseServerClient();
+    const { data: driver, error: driverError } = await supabase
+      .from("drivers")
+      .select("id")
+      .eq("clerk_id", clerkId)
+      .limit(1)
+      .maybeSingle();
+
+    if (driverError) throw driverError;
+    if (!driver) {
+      return Response.json({ error: "Driver not found" }, { status: 404 });
+    }
+
+    const { data, error } = await supabase
+      .from("offer_trip")
+      .update({ status: "cancelled" })
+      .eq("id", Number(id))
+      .eq("driver_id", driver.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return Response.json({ data }, { status: 200 });
+  } catch (error) {
+    if (error instanceof Response) return error;
+    const details =
+      error instanceof Error
+        ? error.message
+        : JSON.stringify(error, Object.getOwnPropertyNames(error as object), 2);
+    console.error("Error cancelling trip:", error);
+    return Response.json(
+      { error: "Internal Server Error", details },
       { status: 500 },
     );
   }

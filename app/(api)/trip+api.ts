@@ -1,13 +1,10 @@
+import { requireClerkUser } from "@/lib/server-auth";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const clerkId = url.searchParams.get("clerkId");
-
-    if (!clerkId) {
-      return Response.json({ error: "Missing clerkId" }, { status: 400 });
-    }
+    const clerkId = await requireClerkUser(request);
 
     const supabase = await getSupabaseServerClient();
 
@@ -28,6 +25,7 @@ export async function GET(request: Request) {
       .from("offer_trip")
       .select("*")
       .eq("driver_id", driver.id)
+      .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(10);
 
@@ -35,6 +33,7 @@ export async function GET(request: Request) {
 
     return Response.json({ data: data ?? [] });
   } catch (error) {
+    if (error instanceof Response) return error;
     const details =
       error instanceof Error
         ? error.message

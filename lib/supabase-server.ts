@@ -32,9 +32,9 @@ const supabaseAnonKey = resolveEnv(
 );
 
 export async function getSupabaseServerClient() {
-  if (!supabaseUrl || !(supabaseServiceRoleKey || supabaseAnonKey)) {
+  if (!supabaseUrl || !supabaseServiceRoleKey) {
     throw new Error(
-      "Supabase environment variables are not configured. Add SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY to your environment before writing to the drivers table.",
+      "Server Supabase credentials are not configured. Add SUPABASE_SERVICE_ROLE_KEY to the server environment.",
     );
   }
 
@@ -58,7 +58,7 @@ export async function getSupabaseServerClient() {
 
   return createSupabaseClient(
     supabaseUrl,
-    supabaseServiceRoleKey || supabaseAnonKey!,
+    supabaseServiceRoleKey,
     options as never,
   );
 }
