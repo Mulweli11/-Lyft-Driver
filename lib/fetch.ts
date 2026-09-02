@@ -1,11 +1,22 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export const fetchAPI = async (url: string, options?: RequestInit) => {
   try {
     const response = await fetch(url, options);
     if (!response.ok) {
-      const body = await response.text();
-      const errorMessage = `HTTP error! status: ${response.status} ${body}`;
+      const contentType = response.headers.get("content-type") ?? "";
+      let errorMessage = `HTTP error! status: ${response.status}`;
+
+      if (contentType.includes("application/json")) {
+        const body = await response.json();
+        errorMessage = body?.error ?? body?.details ?? errorMessage;
+      } else {
+        const body = await response.text();
+        if (body) {
+          errorMessage = body;
+        }
+      }
+
       throw new Error(errorMessage);
     }
     return await response.json();

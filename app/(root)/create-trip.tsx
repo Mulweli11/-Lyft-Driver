@@ -71,11 +71,14 @@ const CreateTrip = () => {
 
       return trips;
     } catch (error: any) {
-      setTripLoadError(error?.message ?? "Unable to load your published trip.");
+      const message = error?.message ?? "Unable to load your published trip.";
+      const quietEmptyState = /404|not found|no rows|no trip|empty/i.test(message);
+
+      setTripLoadError(quietEmptyState ? null : message);
       setPublishedTrips([]);
       setShowPublishedTrips(false);
       setTripCheckComplete(true);
-      throw error;
+      return [];
     }
   };
 
@@ -126,12 +129,8 @@ const CreateTrip = () => {
     const tripIdToEdit = editingTripId;
 
     try {
-      const existingTrips = await loadExistingTrips();
-
-      if (existingTrips.length > 0 && !tripIdToEdit) {
-        setPublishedTrips(existingTrips);
-        setShowPublishedTrips(true);
-        return;
+      if (!tripIdToEdit) {
+        await loadExistingTrips();
       }
 
       const departure = new Date();
@@ -376,31 +375,6 @@ const CreateTrip = () => {
     );
   }
 
-  if (tripLoadError) {
-    return (
-      <RideLayout
-        title="Offer a trip"
-        subtitle="Could not load your current trip"
-        snapPoints={["62%", "92%"]}
-      >
-        <View className="flex-1 items-center justify-center py-10">
-          <Text className="mb-4 text-center text-[13px] font-Jakarta text-[#68756F]">
-            Your trip could not be loaded. Try again before publishing.
-          </Text>
-          <Pressable
-            onPress={() => {
-              setTripCheckComplete(false);
-              loadExistingTrips().catch(() => {});
-            }}
-            className="rounded-xl bg-[#0E5C3F] px-5 py-3"
-          >
-            <Text className="text-[13px] font-JakartaBold text-white">Try again</Text>
-          </Pressable>
-        </View>
-      </RideLayout>
-    );
-  }
-
   return (
     <RideLayout
       title="Offer a trip"
@@ -408,6 +382,14 @@ const CreateTrip = () => {
       snapPoints={["62%", "92%"]}
     >
       <View className="flex-1">
+        {tripLoadError ? (
+          <View className="mb-3 rounded-xl border border-[#F0CACA] bg-[#FEF3F3] p-3">
+            <Text className="text-[12px] font-JakartaMedium text-[#B02A2A]">
+              {tripLoadError}. You can still add a new trip.
+            </Text>
+          </View>
+        ) : null}
+
         {/* ── Route ── */}
         {/* zIndex keeps each suggestion dropdown ABOVE the fields below it;
             without this the sections paint in document order and the list
