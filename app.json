@@ -4,7 +4,7 @@
     "slug": "lyft-driver",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/adaptive-icon.png",
     "scheme": "lyft-driver",
     "userInterfaceStyle": "automatic",
 
@@ -42,18 +42,6 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/icon.png",
-          "imageWidth": 180,
-          "resizeMode": "contain",
-          "backgroundColor": "#06231A",
-          "dark": {
-            "backgroundColor": "#06231A"
-          }
-        }
-      ],
       "expo-secure-store",
       [
         "@stripe/stripe-react-native",

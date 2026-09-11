@@ -1,19 +1,13 @@
 import { ClerkLoaded, ClerkProvider } from "@clerk/clerk-expo";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
-import { LogBox, Platform, View } from "react-native";
+import { LogBox, View } from "react-native";
 import "react-native-reanimated";
 import "../global.css";
 
 import AnimatedSplash from "@/components/AnimatedSplash";
 import { tokenCache } from "@/lib/auth";
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-// The catch matters: in Expo Go and after a Fast Refresh there may be no native
-// splash registered, and the rejected promise surfaces as a red-box error.
-SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
 
@@ -36,19 +30,21 @@ export default function RootLayout() {
     "Jakarta-SemiBold": require("../assets/fonts/PlusJakartaSans-SemiBold.ttf"),
   });
 
-  // Tracks whether the animated splash has played out and faded away
-  const [splashDone, setSplashDone] = useState(Platform.OS === "web");
+  // Always trigger the custom animation first on app open.
+  const [splashDone, setSplashDone] = useState(false);
 
   useEffect(() => {
-    if (loaded) {
-      // Hand off from the native splash to ours. Both use the same green
-      // background, so there's no visible seam.
-      SplashScreen.hideAsync().catch(() => {});
+    if (loaded && splashDone) {
+      // Once the custom animation completes, the app content can render.
     }
-  }, [loaded]);
+  }, [loaded, splashDone]);
+
+  if (!splashDone) {
+    return <AnimatedSplash onFinish={() => setSplashDone(true)} />;
+  }
 
   if (!loaded) {
-    return null;
+    return <AnimatedSplash onFinish={() => setSplashDone(true)} />;
   }
 
   return (
@@ -63,9 +59,6 @@ export default function RootLayout() {
           </Stack>
         </ClerkLoaded>
       </ClerkProvider>
-
-      {/* Sits above everything, including Clerk's own loading gap, then lifts */}
-      {!splashDone && <AnimatedSplash onFinish={() => setSplashDone(true)} />}
     </View>
   );
 }
