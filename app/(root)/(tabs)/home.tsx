@@ -9,6 +9,27 @@ import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Animated, Pressable, Text, View } from "react-native";
 
+type SelectedHub = {
+  id: number;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  radius: number;
+};
+
+const distanceInMeters = (firstLatitude: number, firstLongitude: number, secondLatitude: number, secondLongitude: number) => {
+  const earthRadius = 6371000;
+  const latitudeDelta = ((secondLatitude - firstLatitude) * Math.PI) / 180;
+  const longitudeDelta = ((secondLongitude - firstLongitude) * Math.PI) / 180;
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos((firstLatitude * Math.PI) / 180) *
+      Math.cos((secondLatitude * Math.PI) / 180) *
+      Math.sin(longitudeDelta / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 const Home = () => {
   const { user } = useUser();
   const { setUserLocation, userLatitude, userLongitude, userAddress } = useLocationStore();
@@ -17,6 +38,8 @@ const Home = () => {
   const [availableSeats, setAvailableSeats] = useState(2);
   const [canGoOnline, setCanGoOnline] = useState(false);
   const [incomingRequest, setIncomingRequest] = useState<any>(null);
+  const [driverRequests, setDriverRequests] = useState<any[]>([]);
+  const [selectedHub, setSelectedHub] = useState<SelectedHub | null>(null);
   const [activeRideLocation, setActiveRideLocation] = useState<{
     pickup: { latitude: number; longitude: number; address?: string | null };
     destination: { latitude: number; longitude: number; address?: string | null };
@@ -113,6 +136,7 @@ const Home = () => {
         `/(api)/driver/requests?clerkId=${encodeURIComponent(user.id)}`,
       );
       const rides = Array.isArray(result?.data) ? result.data : [];
+      setDriverRequests(rides);
       const latestBooked = [...rides]
         .filter((ride: any) => (ride.status ?? "booked") === "booked")
         .sort(
@@ -285,6 +309,20 @@ const Home = () => {
   };
 
   const driverName = user?.firstName ? `${user.firstName}` : "Driver";
+  const hubPassengers = selectedHub
+    ? driverRequests.filter((ride) => {
+        if ((ride.status ?? "booked") !== "booked") return false;
+        if (ride.origin_latitude == null || ride.origin_longitude == null) return false;
+        return (
+          distanceInMeters(
+            selectedHub.latitude,
+            selectedHub.longitude,
+            Number(ride.origin_latitude),
+            Number(ride.origin_longitude),
+          ) <= selectedHub.radius
+        );
+      })
+    : [];
 
   return (
     <View className="flex-1 bg-[#DDEAF7]">
@@ -295,6 +333,7 @@ const Home = () => {
         dropoffLatitude={activeRideLocation?.destination.latitude ?? null}
         dropoffLongitude={activeRideLocation?.destination.longitude ?? null}
         dropoffAddress={activeRideLocation?.destination.address ?? null}
+        onHubPress={setSelectedHub}
       />
 
       <View className="absolute inset-x-0 top-0 z-20 px-4 pt-12">
@@ -446,6 +485,57 @@ const Home = () => {
             </View>
           </View>
         </Animated.View>
+      )}
+
+      {selectedHub && !incomingRequest && (
+        <View className="absolute inset-x-0 bottom-[104px] z-20 px-4">
+          <View className="rounded-[28px] bg-white p-4 shadow-[0_18px_40px_rgba(17,37,74,0.18)]">
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 pr-3">
+                <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.14em] text-[#778292]">
+                  Available passengers
+                </Text>
+                <Text className="mt-1 text-[20px] font-JakartaExtraBold text-[#1B2C4D]">
+                  {selectedHub.name}
+                </Text>
+                <Text className="mt-1 text-[12px] font-JakartaMedium text-[#778292]" numberOfLines={1}>
+                  {selectedHub.address}
+                </Text>
+              </View>
+              <Pressable
+                accessibilityLabel="Close hub passengers"
+                onPress={() => setSelectedHub(null)}
+                className="h-9 w-9 items-center justify-center rounded-full bg-[#F1F4F7]"
+              >
+                <Ionicons name="close" size={18} color="#1B2C4D" />
+              </Pressable>
+            </View>
+
+            {hubPassengers.length > 0 ? (
+              <View className="mt-4 gap-2">
+                {hubPassengers.map((ride) => (
+                  <View key={String(ride.ride_id)} className="flex-row items-center justify-between rounded-2xl bg-[#F4F7FB] px-3 py-3">
+                    <View className="flex-1 pr-3">
+                      <Text className="text-[14px] font-JakartaBold text-[#1B2C4D]">
+                        {ride.passenger?.first_name ?? "Passenger"} {ride.passenger?.last_name ?? ""}
+                      </Text>
+                      <Text className="mt-1 text-[11px] font-JakartaMedium text-[#778292]" numberOfLines={1}>
+                        To {ride.destination_address ?? "their destination"}
+                      </Text>
+                    </View>
+                    <Text className="text-[14px] font-JakartaExtraBold text-[#0E5C3F]">
+                      R{((ride.fare_price ?? 0) / 100).toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text className="mt-4 rounded-2xl bg-[#F4F7FB] px-3 py-4 text-center text-[13px] font-JakartaMedium text-[#778292]">
+                No passengers waiting at this hub.
+              </Text>
+            )}
+          </View>
+        </View>
       )}
 
       {!incomingRequest && showStatusCard && (

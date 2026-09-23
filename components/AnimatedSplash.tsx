@@ -247,10 +247,10 @@ const styles = StyleSheet.create({
     marginHorizontal: ringGap / 2,
   },
   leftRing: {
-    backgroundColor: "rgb(198, 149, 24)",
+    backgroundColor: "#d2fe52",
   },
   rightRing: {
-    backgroundColor: "rgb(198, 65, 24)",
+    backgroundColor: "#d2fe52",
   },
   ringHole: {
     position: "absolute",

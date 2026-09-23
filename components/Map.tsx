@@ -39,6 +39,7 @@ export default function Map({
   dropoffLatitude,
   dropoffLongitude,
   dropoffAddress,
+  onHubPress,
 }: {
   passengerLatitude?: number | null;
   passengerLongitude?: number | null;
@@ -46,6 +47,7 @@ export default function Map({
   dropoffLatitude?: number | null;
   dropoffLongitude?: number | null;
   dropoffAddress?: string | null;
+  onHubPress?: (hub: Hub) => void;
 }) {
   const { userLatitude, userLongitude } = useLocationStore();
   const [hubs, setHubs] = useState<Hub[]>([]);
@@ -203,6 +205,7 @@ export default function Map({
             title={hub.name}
             description={hub.address}
             anchor={{ x: 0.5, y: 0.5 }}
+            onPress={() => onHubPress?.(hub)}
           >
             <View
               style={{
