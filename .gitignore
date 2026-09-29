@@ -42,3 +42,16 @@ app-example
 /ios
 /android
 .env
+
+# Coverage reports
+coverage/
+*.lcov
+lcov.info
+
+# IDE
+.idea/
+.vscode/
+
+# Test output
+automated-test-results.txt
+driver-regression-test-results.txt

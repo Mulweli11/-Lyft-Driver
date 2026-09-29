@@ -1,11 +1,21 @@
 describe('user API route', () => {
+  let consoleLogSpy: jest.SpyInstance;
+  let consoleErrorSpy: jest.SpyInstance;
+
   const setupSupabase = (mockImpl: any) => {
     jest.doMock('../lib/supabase-server', () => ({
       getSupabaseServerClient: jest.fn().mockResolvedValue(mockImpl),
     }));
   };
 
+  beforeEach(() => {
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
   afterEach(() => {
+    consoleLogSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
     jest.resetModules();
     jest.clearAllMocks();
   });
