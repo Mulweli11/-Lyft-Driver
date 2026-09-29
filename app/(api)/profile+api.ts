@@ -61,7 +61,7 @@ export async function GET(request: Request) {
     const { data: profile, error } = await supabase
       .from("drivers")
       .select(
-        "id, first_name, last_name, full_name, email, phone_number, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update, status, verified",
+        "id, first_name, last_name, full_name, email, phone_number, clerk_id, profile_image_url, rating, total_trips, verification_percentage, profile_data, car_seats, is_online, latitude, longitude, last_location_update, status, verified, driver_verification_status, driver_rejection_reason, driver_submitted_at, id_verified, passport_verified, licence_verified, didit_session_id, didit_decision, didit_verified_at, id_number, passport_number, date_of_birth, id_citizenship, aml_hits, liveness_score, face_match_score",
       )
       .eq("clerk_id", clerkId)
       .maybeSingle();
@@ -131,9 +131,13 @@ export async function POST(request: Request) {
       };
     }
 
+    // ─── Names ────────────────────────────────────────────────────────────
     if (typeof updates.full_name !== "undefined") {
       updatePayload.full_name = updates.full_name;
-      if (typeof updates.first_name === "undefined" && typeof updates.last_name === "undefined") {
+      if (
+        typeof updates.first_name === "undefined" &&
+        typeof updates.last_name === "undefined"
+      ) {
         const split = splitFullName(updates.full_name);
         updatePayload.first_name = split.first_name;
         updatePayload.last_name = split.last_name;
@@ -150,13 +154,17 @@ export async function POST(request: Request) {
 
     if (typeof updates.name !== "undefined") {
       updatePayload.full_name = updates.name;
-      if (typeof updates.first_name === "undefined" && typeof updates.last_name === "undefined") {
+      if (
+        typeof updates.first_name === "undefined" &&
+        typeof updates.last_name === "undefined"
+      ) {
         const split = splitFullName(updates.name);
         updatePayload.first_name = split.first_name;
         updatePayload.last_name = split.last_name;
       }
     }
 
+    // ─── Contact / profile ────────────────────────────────────────────────
     if (typeof updates.email !== "undefined") {
       updatePayload.email = updates.email;
     }
@@ -169,6 +177,7 @@ export async function POST(request: Request) {
       updatePayload.phone_number = updates.phone_number;
     }
 
+    // ─── Stats ────────────────────────────────────────────────────────────
     if (typeof updates.rating !== "undefined") {
       updatePayload.rating = parseNumber(updates.rating);
     }
@@ -178,13 +187,16 @@ export async function POST(request: Request) {
     }
 
     if (typeof updates.verification_percentage !== "undefined") {
-      updatePayload.verification_percentage = parseNumber(updates.verification_percentage);
+      updatePayload.verification_percentage = parseNumber(
+        updates.verification_percentage,
+      );
     }
 
     if (typeof updates.car_seats !== "undefined") {
       updatePayload.car_seats = parseNumber(updates.car_seats);
     }
 
+    // ─── Online status (gated by verification) ────────────────────────────
     if (typeof updates.is_online !== "undefined") {
       const currentDriver = await supabase
         .from("drivers")
@@ -197,7 +209,8 @@ export async function POST(request: Request) {
         currentDriver?.data?.status ??
         "not_submitted";
       const isApproved =
-        verificationStatus === "approved" || currentDriver?.data?.verified === true;
+        verificationStatus === "approved" ||
+        currentDriver?.data?.verified === true;
 
       if (updates.is_online === true && !isApproved) {
         updatePayload.is_online = false;
@@ -206,6 +219,7 @@ export async function POST(request: Request) {
       }
     }
 
+    // ─── Location ─────────────────────────────────────────────────────────
     if (typeof updates.latitude !== "undefined") {
       updatePayload.latitude = parseNumber(updates.latitude);
     }
@@ -218,6 +232,7 @@ export async function POST(request: Request) {
       updatePayload.last_location_update = updates.last_location_update;
     }
 
+    // ─── Driver verification status ───────────────────────────────────────
     if (typeof updates.status !== "undefined") {
       updatePayload.status = updates.status;
     }
@@ -227,7 +242,8 @@ export async function POST(request: Request) {
     }
 
     if (typeof updates.driver_verification_status !== "undefined") {
-      updatePayload.driver_verification_status = updates.driver_verification_status;
+      updatePayload.driver_verification_status =
+        updates.driver_verification_status;
     }
 
     if (typeof updates.driver_rejection_reason !== "undefined") {
@@ -238,6 +254,63 @@ export async function POST(request: Request) {
       updatePayload.driver_submitted_at = updates.driver_submitted_at;
     }
 
+    // ─── Per-document verification flags (set by Didit webhook) ───────────
+    if (typeof updates.id_verified !== "undefined") {
+      updatePayload.id_verified = updates.id_verified;
+    }
+
+    if (typeof updates.passport_verified !== "undefined") {
+      updatePayload.passport_verified = updates.passport_verified;
+    }
+
+    if (typeof updates.licence_verified !== "undefined") {
+      updatePayload.licence_verified = updates.licence_verified;
+    }
+
+    // ─── Didit metadata ───────────────────────────────────────────────────
+    if (typeof updates.didit_session_id !== "undefined") {
+      updatePayload.didit_session_id = updates.didit_session_id;
+    }
+
+    if (typeof updates.didit_decision !== "undefined") {
+      updatePayload.didit_decision = updates.didit_decision;
+    }
+
+    if (typeof updates.didit_verified_at !== "undefined") {
+      updatePayload.didit_verified_at = updates.didit_verified_at;
+    }
+
+    // ─── ID extraction fields ─────────────────────────────────────────────
+    if (typeof updates.id_number !== "undefined") {
+      updatePayload.id_number = updates.id_number;
+    }
+
+    if (typeof updates.passport_number !== "undefined") {
+      updatePayload.passport_number = updates.passport_number;
+    }
+
+    if (typeof updates.date_of_birth !== "undefined") {
+      updatePayload.date_of_birth = updates.date_of_birth;
+    }
+
+    if (typeof updates.id_citizenship !== "undefined") {
+      updatePayload.id_citizenship = updates.id_citizenship;
+    }
+
+    // ─── Scores ───────────────────────────────────────────────────────────
+    if (typeof updates.aml_hits !== "undefined") {
+      updatePayload.aml_hits = parseNumber(updates.aml_hits);
+    }
+
+    if (typeof updates.liveness_score !== "undefined") {
+      updatePayload.liveness_score = parseNumber(updates.liveness_score);
+    }
+
+    if (typeof updates.face_match_score !== "undefined") {
+      updatePayload.face_match_score = parseNumber(updates.face_match_score);
+    }
+
+    // ─── Apply the update ─────────────────────────────────────────────────
     const { data: updatedDriver, error: updateError } = await supabase
       .from("drivers")
       .update(updatePayload)
@@ -249,21 +322,21 @@ export async function POST(request: Request) {
       throw updateError;
     }
 
+    // ─── Insert if the driver row doesn't exist yet ───────────────────────
     const splitName = splitFullName(
       typeof updates.full_name === "string"
         ? updates.full_name
         : typeof updates.name === "string"
-        ? updates.name
-        : null,
+          ? updates.name
+          : null,
     );
 
-    const resultData =
-      updatedDriver ??
-      (
-        await supabase
-          .from("drivers")
-          .insert(
-            {
+    const resultData = updatedDriver
+      ? updatedDriver
+      : (
+          await supabase
+            .from("drivers")
+            .insert({
               clerk_id: clerkId,
               first_name:
                 typeof updates.first_name === "string"
@@ -277,8 +350,8 @@ export async function POST(request: Request) {
                 typeof updates.full_name === "string"
                   ? updates.full_name
                   : typeof updates.name === "string"
-                  ? updates.name
-                  : null,
+                    ? updates.name
+                    : null,
               email: typeof updates.email === "string" ? updates.email : null,
               phone_number:
                 typeof updates.phone_number === "string"
@@ -290,9 +363,14 @@ export async function POST(request: Request) {
                   : null,
               rating: parseNumber(updates.rating),
               total_trips: parseNumber(updates.total_trips),
-              verification_percentage: parseNumber(updates.verification_percentage),
+              verification_percentage: parseNumber(
+                updates.verification_percentage,
+              ),
               car_seats: parseNumber(updates.car_seats),
-              is_online: typeof updates.is_online === "boolean" ? updates.is_online : false,
+              is_online:
+                typeof updates.is_online === "boolean"
+                  ? updates.is_online
+                  : false,
               latitude: parseNumber(updates.latitude),
               longitude: parseNumber(updates.longitude),
               last_location_update:
@@ -315,31 +393,60 @@ export async function POST(request: Request) {
                 typeof updates.driver_submitted_at === "string"
                   ? updates.driver_submitted_at
                   : null,
+              id_verified:
+                typeof updates.id_verified === "boolean"
+                  ? updates.id_verified
+                  : false,
+              passport_verified:
+                typeof updates.passport_verified === "boolean"
+                  ? updates.passport_verified
+                  : false,
+              licence_verified:
+                typeof updates.licence_verified === "boolean"
+                  ? updates.licence_verified
+                  : false,
+              didit_session_id:
+                typeof updates.didit_session_id === "string"
+                  ? updates.didit_session_id
+                  : null,
+              didit_decision:
+                typeof updates.didit_decision === "object"
+                  ? updates.didit_decision
+                  : null,
+              didit_verified_at:
+                typeof updates.didit_verified_at === "string"
+                  ? updates.didit_verified_at
+                  : null,
+              id_number:
+                typeof updates.id_number === "string"
+                  ? updates.id_number
+                  : null,
+              passport_number:
+                typeof updates.passport_number === "string"
+                  ? updates.passport_number
+                  : null,
+              date_of_birth:
+                typeof updates.date_of_birth === "string"
+                  ? updates.date_of_birth
+                  : null,
+              id_citizenship:
+                typeof updates.id_citizenship === "string"
+                  ? updates.id_citizenship
+                  : null,
+              aml_hits: parseNumber(updates.aml_hits),
+              liveness_score: parseNumber(updates.liveness_score),
+              face_match_score: parseNumber(updates.face_match_score),
               profile_data: profilePayload ?? {},
-            },
-          )
-          .select()
-          .single()
-      ).data;
+            })
+            .select()
+            .single()
+        ).data;
 
     return Response.json({
       data: resultData
         ? {
             ...resultData,
             name: resultData.full_name ?? null,
-          }
-        : null,
-    });
-
-    if (result.error) {
-      throw result.error;
-    }
-
-    return Response.json({
-      data: result.data
-        ? {
-            ...result.data,
-            name: result.data.full_name ?? null,
           }
         : null,
     });

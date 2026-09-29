@@ -1,16 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Verification: picking, uploading and submitting identity documents.
-//
-// Documents are personal information under POPIA, so they go into a PRIVATE
-// Supabase bucket. Nothing here ever produces a public URL — reads go through
-// short-lived signed URLs instead.
-//
-// Requires:  npx expo install expo-image-picker
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Base64 to bytes, written out rather than pulled from a package. Supabase
-// Storage needs an ArrayBuffer, and React Native has no atob(). One small
-// function beats another dependency to install.
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 function decode(base64: string): ArrayBuffer {
@@ -43,11 +34,9 @@ import { getSupabaseClient } from "@/lib/supabase";
 export const BUCKET = "verification-documents";
 
 export type DocKind =
-  // Everyone
   | "id_front"
   | "id_back"
   | "selfie"
-  // Drivers only
   | "licence"
   | "pdp"
   | "vehicle_registration"
@@ -55,7 +44,6 @@ export type DocKind =
   | "insurance"
   | "vehicle_photo";
 
-/** Documents that carry an expiry date a reviewer must check. */
 export const EXPIRING_DOCS: DocKind[] = [
   "licence",
   "pdp",
@@ -88,7 +76,6 @@ async function getImageBuffer(image: PickedImage): Promise<ArrayBuffer> {
   return await response.arrayBuffer();
 }
 
-/** Human labels, kept in one place so the screen and any emails agree. */
 export const DOC_LABELS: Record<DocKind, { title: string; help: string }> = {
   id_front: {
     title: "ID document",
@@ -145,7 +132,6 @@ async function toPickedImage(
   };
 }
 
-/** Choose a document image from the photo library. */
 export async function pickFromLibrary(): Promise<PickedImage | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
@@ -155,7 +141,7 @@ export async function pickFromLibrary(): Promise<PickedImage | null> {
   }
 
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images"], // MediaTypeOptions is deprecated in SDK 52+
+    mediaTypes: ["images"],
     allowsEditing: true,
     quality: 0.7,
     base64: true,
@@ -164,7 +150,6 @@ export async function pickFromLibrary(): Promise<PickedImage | null> {
   return toPickedImage(result);
 }
 
-/** Take a photo. Pass front: true for the selfie step. */
 export async function captureImage(front = false): Promise<PickedImage | null> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) {
@@ -187,10 +172,6 @@ export async function captureImage(front = false): Promise<PickedImage | null> {
 
 // ─── Uploading ───────────────────────────────────────────────────────────────
 
-/**
- * Upload one document and return its storage path (not a URL).
- * Paths are namespaced per user so a storage policy can restrict access.
- */
 export async function uploadDocument(
   clerkId: string,
   kind: DocKind,
@@ -211,15 +192,13 @@ export async function uploadDocument(
 
   if (error) {
     console.error("Document upload failed:", error);
-    throw new Error("We couldn't upload that image. Check your connection and try again.");
+    throw new Error(
+      "We couldn't upload that image. Check your connection and try again.",
+    );
   }
 
   return path;
 }
-
-// ─── Avatars ─────────────────────────────────────────────────────────────────
-// Profile photos are shown to drivers and other riders, so unlike ID documents
-// these live in a PUBLIC bucket called `avatars`.
 
 export async function uploadAvatar(
   clerkId: string,
@@ -243,23 +222,17 @@ export async function uploadAvatar(
     throw new Error("We couldn't upload that photo. Please try again.");
   }
 
-  const { data, error: publicUrlError } = supabase.storage.from("avatars").getPublicUrl(path);
-  if (publicUrlError) {
-    console.error("Could not generate avatar public URL:", publicUrlError);
-    throw new Error("We uploaded your photo, but couldn't build a URL for it. Please try again.");
-  }
+  const { data, error: publicUrlError } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(path);
 
-  if (!data?.publicUrl) {
-    throw new Error("We couldn't generate a public URL for the avatar. Check your storage bucket settings.");
+  if (publicUrlError || !data?.publicUrl) {
+    throw new Error("We couldn't generate a public URL for the avatar.");
   }
 
   return data.publicUrl;
 }
 
-/**
- * Short-lived read URL for a stored document. Never store the result — it
- * expires, and caching it defeats the point of a private bucket.
- */
 export async function getSignedUrl(
   path: string,
   expiresInSeconds = 60,
@@ -278,25 +251,51 @@ export async function getSignedUrl(
   return data?.signedUrl ?? null;
 }
 
+// ─── Didit: single-button flow ───────────────────────────────────────────────
+
+export type DiditStartResult = {
+  session_id: string;
+  session_token: string;
+  url: string;
+};
+
+export async function startDiditVerification(
+  clerkId: string,
+): Promise<DiditStartResult> {
+  console.log("DIDIT: creating session for", clerkId);
+
+  const res = await fetchAPI("/(api)/didit-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ clerkId }),
+  });
+
+  const session: DiditStartResult | undefined = res?.data ?? res;
+
+  if (!session?.url) {
+    throw new Error(
+      "We couldn't start the identity check. Please check your connection and try again.",
+    );
+  }
+
+  return session;
+}
+
 // ─── Submitting ──────────────────────────────────────────────────────────────
 
 export type VerificationPayload = {
   government_id_url?: string;
   government_id_back_url?: string;
   selfie_image_url?: string;
-  /** Derived from the ID number itself, so it can't disagree with the document. */
   id_number?: string;
   date_of_birth?: string;
   id_citizenship?: string;
-  /** Anything the automatic checks flagged, for the reviewer to look at. */
   verification_warnings?: string[];
+  didit_session_id?: string;
+  didit_decision?: Record<string, unknown>;
+  didit_verified_at?: string;
 };
 
-/**
- * Save the uploaded paths and move the account into review.
- * Uses the existing /(api)/profile endpoint — no new backend needed beyond
- * accepting these columns.
- */
 export async function submitForReview(
   clerkId: string,
   paths: VerificationPayload,
@@ -311,17 +310,4 @@ export async function submitForReview(
       verification_submitted_at: new Date().toISOString(),
     }),
   });
-}
-
-// ─── Progress ────────────────────────────────────────────────────────────────
-
-/** Percentage complete, counting each requirement independently. */
-export function verificationProgress(flags: {
-  photo: boolean;
-  phone: boolean;
-  id: boolean;
-  selfie: boolean;
-}) {
-  const done = Object.values(flags).filter(Boolean).length;
-  return Math.round((done / 4) * 100);
 }

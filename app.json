@@ -43,6 +43,7 @@
       "expo-status-bar",
       "expo-web-browser",
       "expo-secure-store",
+      "expo-image-picker",
       [
         "@stripe/stripe-react-native",
         {
@@ -55,6 +56,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": false
+    },
+
+    "extra": {
+      "eas": {
+        "projectId": "d3982bc5-8411-4520-b271-5271fad8d96a"
+      }
     }
   }
 }

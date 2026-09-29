@@ -18,30 +18,25 @@ import CustomButton from "@/components/CustomButton";
 import { fetchAPI } from "@/lib/fetch";
 import {
     DOC_LABELS,
+    DiditDocType,
     DocKind,
     EXPIRING_DOCS,
     PickedImage,
     VerificationStatus,
     captureImage,
     pickFromLibrary,
+    startDiditVerification,
     uploadDocument,
 } from "@/lib/verification";
 
 type Picked = Partial<Record<DocKind, PickedImage>>;
 type Expiries = Partial<Record<DocKind, string>>;
 
-// Ordered by what blocks a driver from working. Identity first, then the
-// legal right to carry passengers, then the vehicle itself.
 const SECTIONS: { title: string; note?: string; docs: DocKind[] }[] = [
-  {
-    title: "Your identity",
-    note: "Same checks every passenger completes.",
-    docs: ["id_front", "selfie"],
-  },
   {
     title: "Your licence",
     note: "A Professional Driving Permit is required by law to carry passengers for reward.",
-    docs: ["licence", "pdp"],
+    docs: ["pdp"],
   },
   {
     title: "Your vehicle",
@@ -50,14 +45,7 @@ const SECTIONS: { title: string; note?: string; docs: DocKind[] }[] = [
   },
 ];
 
-const REQUIRED: DocKind[] = [
-  "id_front",
-  "selfie",
-  "licence",
-  "pdp",
-  "vehicle_registration",
-  "insurance",
-];
+const REQUIRED: DocKind[] = ["pdp", "vehicle_registration", "insurance"];
 
 const STATUS_BANNER: Record<
   VerificationStatus,
@@ -98,14 +86,19 @@ const DriverVerification = () => {
 
   const [status, setStatus] = useState<VerificationStatus>("not_submitted");
   const [reason, setReason] = useState<string | null>(null);
-  const [vehicle, setVehicle] = useState<any>({});
   const [picked, setPicked] = useState<Picked>({});
   const [expiries, setExpiries] = useState<Expiries>({});
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(true);
   const [busyKind, setBusyKind] = useState<DocKind | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Didit per-document state
+  const [diditBusy, setDiditBusy] = useState<DiditDocType | null>(null);
+  const [diditDone, setDiditDone] = useState<Record<DiditDocType, boolean>>({
+    id: false,
+    passport: false,
+    licence: false,
+  });
 
   const load = useCallback(async () => {
     if (!user?.id) {
@@ -118,24 +111,25 @@ const DriverVerification = () => {
         `/(api)/profile?clerkId=${encodeURIComponent(user.id)}`,
       );
       const record = result?.data ?? {};
+
       setStatus(
         (record.driver_verification_status as VerificationStatus) ??
           "not_submitted",
       );
       setReason(record.driver_rejection_reason ?? null);
-      setVehicle(record.profile_data?.vehicle ?? {});
-      setFirstName(
-        record.first_name ??
-          (typeof record.full_name === "string"
-            ? record.full_name.trim().split(/\s+/)[0] ?? ""
-            : ""),
-      );
-      setLastName(
-        record.last_name ??
-          (typeof record.full_name === "string"
-            ? record.full_name.trim().split(/\s+/).slice(1).join(" ")
-            : ""),
-      );
+
+      // Restore verified ticks from the DB fields set by the webhook
+      setDiditDone({
+        id: record.id_verified === true,
+        passport: record.passport_verified === true,
+        licence: record.licence_verified === true,
+      });
+
+      console.log("DIDIT: restored from DB", {
+        id: record.id_verified,
+        passport: record.passport_verified,
+        licence: record.licence_verified,
+      });
     } catch (error) {
       console.warn("Could not load driver verification", error);
     } finally {
@@ -151,33 +145,19 @@ const DriverVerification = () => {
 
   const locked = status === "pending" || status === "approved";
 
-  const vehicleComplete = Boolean(
-    vehicle?.make && vehicle?.model && vehicle?.plate && vehicle?.seats,
-  );
-
   const done = REQUIRED.filter((kind) => picked[kind]).length;
-  const progress = Math.round(
-    ((done + (vehicleComplete ? 1 : 0)) / (REQUIRED.length + 1)) * 100,
-  );
-
-  const firstNameValid = firstName.trim().length > 0;
-  const lastNameValid = lastName.trim().length > 0;
-  const missingIdentity = !firstNameValid || !lastNameValid;
+  const progress = Math.round((done / REQUIRED.length) * 100);
 
   const missingExpiry = useMemo(
-    () =>
-      EXPIRING_DOCS.some((kind) => picked[kind] && !expiries[kind]),
+    () => EXPIRING_DOCS.some((kind) => picked[kind] && !expiries[kind]),
     [picked, expiries],
   );
 
-  const canSubmit =
-    done === REQUIRED.length &&
-    vehicleComplete &&
-    !missingExpiry &&
-    !missingIdentity &&
-    !submitting;
+  const canSubmit = done === REQUIRED.length && !missingExpiry && !submitting;
 
   const choose = (kind: DocKind) => {
+    console.log("DOC ROW: tapped", kind);
+
     const run = async (fn: () => Promise<PickedImage | null>) => {
       setBusyKind(kind);
       try {
@@ -190,16 +170,39 @@ const DriverVerification = () => {
       }
     };
 
-    if (kind === "selfie") {
-      run(() => captureImage(true));
-      return;
-    }
-
     Alert.alert(DOC_LABELS[kind].title, "How would you like to add this?", [
       { text: "Take a photo", onPress: () => run(() => captureImage(false)) },
       { text: "Choose from library", onPress: () => run(pickFromLibrary) },
       { text: "Cancel", style: "cancel" },
     ]);
+  };
+
+  const launchDidit = async (docType: DiditDocType) => {
+    console.log("DIDIT BUTTON: pressed for", docType);
+
+    if (!user?.id) {
+      Alert.alert("Not signed in", "Please sign in again.");
+      return;
+    }
+
+    setDiditBusy(docType);
+    try {
+      const session = await startDiditVerification(user.id, docType);
+
+      router.push({
+        pathname: "/(root)/didit-webview",
+        params: { url: session.url, docType },
+      });
+
+      // Mark as done locally so the tick appears right away.
+      // The webhook will persist it to the DB for future reloads.
+      setDiditDone((prev) => ({ ...prev, [docType]: true }));
+    } catch (err: any) {
+      console.log("DIDIT BUTTON ERROR:", err?.message ?? err);
+      Alert.alert("Verification", err?.message ?? "Please try again.");
+    } finally {
+      setDiditBusy(null);
+    }
   };
 
   const submit = async () => {
@@ -222,9 +225,6 @@ const DriverVerification = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clerkId: user.id,
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
-          full_name: `${firstName.trim()} ${lastName.trim()}`,
           driver_verification_status: "pending",
           driver_submitted_at: new Date().toISOString(),
           profile_data: { driver_documents: documents },
@@ -246,7 +246,7 @@ const DriverVerification = () => {
 
   const banner = STATUS_BANNER[status];
 
-  // ── Document row ───────────────────────────────────────────────────────────
+  // ─── Upload row ─────────────────────────────────────────────────────────
   const DocRow = ({ kind }: { kind: DocKind }) => {
     const image = picked[kind];
     const busy = busyKind === kind;
@@ -259,9 +259,10 @@ const DriverVerification = () => {
         <Pressable
           onPress={() => !locked && !busy && choose(kind)}
           disabled={locked || busy}
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           className={`flex-row items-center rounded-2xl border-[1.5px] p-3.5 ${
             image ? "border-[#0E5C3F] bg-[#F2F8F5]" : "border-[#E2E9E5] bg-white"
-          } ${locked ? "opacity-60" : "active:opacity-80"}`}
+          }`}
         >
           {image ? (
             <Image
@@ -299,8 +300,6 @@ const DriverVerification = () => {
           </View>
         </Pressable>
 
-        {/* Expiry matters more than the document itself — an expired licence
-            is not a valid licence, and we need to know when to re-ask */}
         {expires && !!image && !locked && (
           <View
             className={`mt-2 flex-row items-center rounded-2xl border-[1.5px] px-4 ${
@@ -323,6 +322,62 @@ const DriverVerification = () => {
             />
           </View>
         )}
+      </View>
+    );
+  };
+
+  // ─── Didit verify card ──────────────────────────────────────────────────
+  const DiditCard = ({
+    docType,
+    title,
+    help,
+    icon,
+  }: {
+    docType: DiditDocType;
+    title: string;
+    help: string;
+    icon: any;
+  }) => {
+    const verified = diditDone[docType];
+    const busy = diditBusy === docType;
+
+    return (
+      <View
+        className={`mb-3 rounded-3xl border-[1.5px] p-5 ${
+          verified
+            ? "border-[#1FB574] bg-[#E8F7EF]"
+            : "border-[#0E5C3F] bg-[#F2F8F5]"
+        }`}
+      >
+        <View className="flex-row items-center gap-2">
+          <Ionicons name={icon} size={20} color="#0E5C3F" />
+          <Text className="text-[15px] font-JakartaExtraBold text-[#101814]">
+            {title}
+          </Text>
+          {verified && (
+            <View className="ml-auto h-7 w-7 items-center justify-center rounded-full bg-[#1FB574]">
+              <Ionicons name="checkmark" size={16} color="#fff" />
+            </View>
+          )}
+        </View>
+
+        <Text className="mt-2 text-[12.5px] font-Jakarta leading-4 text-[#4A5450]">
+          {verified ? "Verified successfully." : help}
+        </Text>
+
+        <View className="mt-4">
+          <CustomButton
+            title={
+              busy
+                ? "Opening…"
+                : verified
+                  ? "Re-verify"
+                  : `Verify ${title.toLowerCase()}`
+            }
+            loading={busy}
+            onPress={() => launchDidit(docType)}
+          />
+        </View>
       </View>
     );
   };
@@ -353,7 +408,6 @@ const DriverVerification = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Banner */}
           <View className={`mb-5 rounded-3xl p-5 ${banner.bg}`}>
             <Ionicons name={banner.icon} size={26} color={banner.tint} />
             <Text
@@ -380,8 +434,32 @@ const DriverVerification = () => {
 
           {status !== "approved" && (
             <>
-              {/* Progress */}
-              <View className="mb-5 rounded-3xl border border-[#E2E9E5] bg-white p-5">
+              <Text className="mb-3 text-[15px] font-JakartaExtraBold text-[#101814]">
+                Verify your identity
+              </Text>
+
+              <DiditCard
+                docType="id"
+                title="South African ID"
+                help="Scan your green ID book or smart ID card. We check it against Home Affairs."
+                icon="card-outline"
+              />
+
+              <DiditCard
+                docType="passport"
+                title="Foreign passport"
+                help="Not a South African citizen? Verify your passport instead."
+                icon="book-outline"
+              />
+
+              <DiditCard
+                docType="licence"
+                title="Driving licence"
+                help="Enter your licence number and initials. We check it against the NATIS register."
+                icon="car-outline"
+              />
+
+              <View className="mb-5 mt-2 rounded-3xl border border-[#E2E9E5] bg-white p-5">
                 <View className="flex-row items-center justify-between">
                   <Text className="text-[15px] font-JakartaExtraBold text-[#101814]">
                     Your progress
@@ -398,79 +476,6 @@ const DriverVerification = () => {
                 </View>
               </View>
 
-              <View className="mb-5 rounded-3xl border border-[#E2E9E5] bg-white p-5">
-                <Text className="mb-3 text-[15px] font-JakartaExtraBold text-[#101814]">
-                  Driver identity
-                </Text>
-                <View className="mb-4">
-                  <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
-                    First name
-                  </Text>
-                  <TextInput
-                    value={firstName}
-                    onChangeText={setFirstName}
-                    placeholder="Enter your first name"
-                    placeholderTextColor="#B4BEB9"
-                    autoCapitalize="words"
-                    className="rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#101814]"
-                  />
-                </View>
-                <View>
-                  <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
-                    Last name
-                  </Text>
-                  <TextInput
-                    value={lastName}
-                    onChangeText={setLastName}
-                    placeholder="Enter your last name"
-                    placeholderTextColor="#B4BEB9"
-                    autoCapitalize="words"
-                    className="rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#101814]"
-                  />
-                </View>
-              </View>
-
-              {/* Vehicle details */}
-              <Text className="mb-3 text-[15px] font-JakartaExtraBold text-[#101814]">
-                Vehicle details
-              </Text>
-
-              <Pressable
-                onPress={() => router.push("/(root)/vehicle-details")}
-                disabled={locked}
-                className={`mb-6 flex-row items-center rounded-2xl border-[1.5px] p-4 ${
-                  vehicleComplete
-                    ? "border-[#0E5C3F] bg-[#F2F8F5]"
-                    : "border-[#E2E9E5] bg-white"
-                } ${locked ? "opacity-60" : "active:opacity-80"}`}
-              >
-                <View className="h-11 w-11 items-center justify-center rounded-xl bg-[#E6F2EC]">
-                  <Ionicons name="car-sport-outline" size={20} color="#0E5C3F" />
-                </View>
-
-                <View className="ml-3.5 flex-1">
-                  <Text className="text-[14.5px] font-JakartaBold text-[#101814]">
-                    {vehicleComplete
-                      ? `${vehicle.make} ${vehicle.model}`
-                      : "Add your vehicle"}
-                  </Text>
-                  <Text className="mt-0.5 text-[12px] font-Jakarta text-[#68756F]">
-                    {vehicleComplete
-                      ? `${vehicle.colour ?? ""} · ${vehicle.plate} · ${vehicle.seats} seats`
-                      : "Make, model, colour, registration and seats"}
-                  </Text>
-                </View>
-
-                {vehicleComplete ? (
-                  <View className="h-6 w-6 items-center justify-center rounded-full bg-[#1FB574]">
-                    <Ionicons name="checkmark" size={14} color="#fff" />
-                  </View>
-                ) : (
-                  <Ionicons name="chevron-forward" size={18} color="#9BA6A1" />
-                )}
-              </Pressable>
-
-              {/* Document sections */}
               {SECTIONS.map((section) => (
                 <View key={section.title}>
                   <Text className="mb-1 text-[15px] font-JakartaExtraBold text-[#101814]">
@@ -506,15 +511,11 @@ const DriverVerification = () => {
                   />
                   {!canSubmit && !submitting && (
                     <Text className="mt-2.5 text-center text-[11.5px] font-Jakarta text-[#9BA6A1]">
-                      {!vehicleComplete
-                        ? "Add your vehicle details to continue"
-                        : missingIdentity
-                          ? "Enter your first and last name"
-                          : missingExpiry
-                            ? "Add the expiry date for each document"
-                            : `${REQUIRED.length - done} document${
-                                REQUIRED.length - done === 1 ? "" : "s"
-                              } still needed`}
+                      {missingExpiry
+                        ? "Add the expiry date for each document"
+                        : `${REQUIRED.length - done} document${
+                            REQUIRED.length - done === 1 ? "" : "s"
+                          } still needed`}
                     </Text>
                   )}
                 </View>
