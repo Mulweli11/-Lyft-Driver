@@ -1,4 +1,5 @@
-import crypto from "node:crypto";
+import * as crypto from "crypto";
+import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 function shortenFloats(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(shortenFloats);
@@ -94,35 +95,55 @@ export async function POST(request: Request) {
 
   if (mapped && vendor_data) {
     try {
-      await fetch(`${process.env.API_BASE_URL}/(api)/profile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clerkId: vendor_data,
-          driver_verification_status: mapped,
-          driver_rejection_reason:
-            status === "Declined"
-              ? idData?.warnings?.join(", ") ?? "Verification declined"
-              : licenceFailed
-                ? "Driving licence could not be verified"
-                : amlHit
-                  ? "Flagged for manual review"
-                  : null,
-          didit_decision: decision ?? null,
-          didit_session_id: session_id,
-          didit_verified_at:
-            mapped === "approved" ? new Date().toISOString() : null,
-          first_name: idData?.first_name ?? null,
-          last_name: idData?.last_name ?? null,
-          id_number: idData?.document_number ?? null,
-          date_of_birth: idData?.date_of_birth ?? null,
-          id_citizenship: idData?.nationality ?? null,
-          liveness_score: livenessData?.score ?? null,
-          face_match_score: faceMatchData?.score ?? null,
-          aml_hits: amlResult?.total_hits ?? 0,
-          licence_verified: licenceCheck?.status === "Approved",
-        }),
-      });
+      const supabase = await getSupabaseServerClient();
+      const isApproved = mapped === "approved";
+      const rawDocType = idData?.document_type?.toLowerCase() ?? "";
+      const isPassport = rawDocType.includes("passport");
+
+      const updatePayload: Record<string, any> = {
+        driver_verification_status: mapped,
+        driver_rejection_reason:
+          status === "Declined"
+            ? idData?.warnings?.join(", ") ?? "Verification declined"
+            : licenceFailed
+              ? "Driving licence could not be verified"
+              : amlHit
+                ? "Flagged for manual review"
+                : null,
+        didit_decision: decision ?? null,
+        didit_session_id: session_id,
+        didit_verified_at: isApproved ? new Date().toISOString() : null,
+        first_name: idData?.first_name ?? null,
+        last_name: idData?.last_name ?? null,
+        date_of_birth: idData?.date_of_birth ?? null,
+        id_citizenship: idData?.nationality ?? null,
+        liveness_score: livenessData?.score ?? null,
+        face_match_score: faceMatchData?.score ?? null,
+        aml_hits: amlResult?.total_hits ?? 0,
+      };
+
+      if (isApproved) {
+        if (isPassport) {
+          updatePayload.passport_verified = true;
+          if (idData?.document_number) {
+            updatePayload.passport_number = idData.document_number;
+          }
+        } else {
+          updatePayload.id_verified = true;
+          if (idData?.document_number || idData?.personal_number) {
+            updatePayload.id_number = idData.document_number || idData.personal_number;
+          }
+        }
+      }
+
+      if (licenceCheck?.status === "Approved") {
+        updatePayload.licence_verified = true;
+      }
+
+      await supabase
+        .from("drivers")
+        .update(updatePayload)
+        .eq("clerk_id", vendor_data);
     } catch (err) {
       console.error("Failed to update profile from webhook:", err);
     }

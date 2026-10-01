@@ -4,13 +4,13 @@ const WORKFLOW_ID = "57368fe7-f4dc-487f-bebe-981305685d81";
 export async function POST(request: Request) {
   try {
     console.log("DIDIT SESSION: request received");
-    const { clerkId } = await request.json();
+    const { clerkId, docType } = await request.json();
 
     if (!clerkId) {
       return Response.json({ error: "clerkId is required" }, { status: 400 });
     }
 
-    console.log("DIDIT SESSION: creating for", clerkId);
+    console.log(`DIDIT SESSION: creating for ${clerkId} (docType: ${docType ?? "id"})`);
 
     const res = await fetch("https://verification.didit.me/v3/session/", {
       method: "POST",
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
         vendor_data: clerkId,
         callback: "https://lyft-driver.expo.app/verification-done",
         callback_method: "both",
-        metadata: { clerkId },
+        metadata: { clerkId, docType: docType ?? "id" },
       }),
     });
 
