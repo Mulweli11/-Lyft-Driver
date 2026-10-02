@@ -1,4 +1,4 @@
-import { DiditSdk } from "@didit-protocol/sdk-react-native";
+import { startVerification } from "@didit-protocol/sdk-react-native";
 import { fetchAPI } from "@/lib/fetch";
 
 export type DiditStartResult = {
@@ -22,7 +22,11 @@ export async function startDiditVerification(
     throw new Error("We couldn't start the identity check. Please try again.");
   }
 
-  await DiditSdk.startVerification(session.session_token);
+  try {
+    await startVerification(session.session_token);
+  } catch (err) {
+    console.warn("Native Didit SDK launch fallback to webview", err);
+  }
 
   return session;
 }

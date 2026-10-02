@@ -61,6 +61,15 @@ const Profile = () => {
   const vehicle = profile?.profile_data?.vehicle ?? {};
   const driverStatus = profile?.driver_verification_status ?? "not_submitted";
   const approved = driverStatus === "approved";
+  const idVerified = profile?.id_verified === true;
+  const passportVerified = profile?.passport_verified === true;
+  const licenceVerified = profile?.licence_verified === true;
+  const idNumber = profile?.id_number;
+  const passportNumber = profile?.passport_number;
+  const licenceNumber =
+    profile?.profile_data?.licence?.licence_number ??
+    profile?.driver_license_number ??
+    null;
 
   const changePhoto = () => {
     const run = async (fn: () => Promise<PickedImage | null>) => {
@@ -213,9 +222,36 @@ const Profile = () => {
             <View className="mb-1">
               <SectionCard
                 title="Driver verification"
-                value="Licence, permit and vehicle documents"
+                value={
+                  approved
+                    ? "Identity, licence and vehicle approved"
+                    : driverStatus === "pending"
+                      ? "Documents submitted · Under review"
+                      : "Licence, permit and vehicle documents"
+                }
                 icon="shield-checkmark-outline"
-                status={approved ? "verified" : "required"}
+                status={
+                  approved
+                    ? "verified"
+                    : driverStatus === "pending"
+                      ? "pending"
+                      : driverStatus === "rejected"
+                        ? "rejected"
+                        : "required"
+                }
+                onPress={() => router.push("/(root)/verification")}
+              />
+              <SectionCard
+                title="Driving licence"
+                value={
+                  licenceVerified
+                    ? licenceNumber
+                      ? `NATIS confirmed · •••• ${licenceNumber.slice(-4)}`
+                      : "NATIS register verified"
+                    : "NATIS database check · Tap to verify"
+                }
+                icon="car-outline"
+                status={licenceVerified ? "verified" : "required"}
                 onPress={() => router.push("/(root)/verification")}
               />
               <SectionCard
@@ -264,6 +300,19 @@ const Profile = () => {
                     params: { field: "phone_number", label: "Phone number" },
                   })
                 }
+              />
+              <SectionCard
+                title="Identity document"
+                value={
+                  idVerified
+                    ? `SA ID · •••• ${idNumber ? idNumber.slice(-4) : ""}`
+                    : passportVerified
+                      ? `Passport · •••• ${passportNumber ? passportNumber.slice(-4) : ""}`
+                      : "Not verified · Tap to verify"
+                }
+                icon="card-outline"
+                status={idVerified || passportVerified ? "verified" : "required"}
+                onPress={() => router.push("/(root)/verification")}
               />
             </View>
 

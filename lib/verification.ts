@@ -177,7 +177,7 @@ export async function uploadDocument(
   kind: DocKind,
   image: PickedImage,
 ): Promise<string> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
 
   const extension = image.mimeType.includes("png") ? "png" : "jpg";
   const path = `${clerkId}/${kind}-${Date.now()}.${extension}`;
@@ -204,7 +204,7 @@ export async function uploadAvatar(
   clerkId: string,
   image: PickedImage,
 ): Promise<string> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
 
   const extension = image.mimeType.includes("png") ? "png" : "jpg";
   const path = `${clerkId}/avatar-${Date.now()}.${extension}`;
@@ -222,11 +222,11 @@ export async function uploadAvatar(
     throw new Error("We couldn't upload that photo. Please try again.");
   }
 
-  const { data, error: publicUrlError } = supabase.storage
+  const { data } = supabase.storage
     .from("avatars")
     .getPublicUrl(path);
 
-  if (publicUrlError || !data?.publicUrl) {
+  if (!data?.publicUrl) {
     throw new Error("We couldn't generate a public URL for the avatar.");
   }
 
@@ -237,7 +237,7 @@ export async function getSignedUrl(
   path: string,
   expiresInSeconds = 60,
 ): Promise<string | null> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
 
   const { data, error } = await supabase.storage
     .from(BUCKET)
@@ -251,7 +251,9 @@ export async function getSignedUrl(
   return data?.signedUrl ?? null;
 }
 
-// ─── Didit: single-button flow ───────────────────────────────────────────────
+// ─── Didit: Verification flow ───────────────────────────────────────────────
+
+export type DiditDocType = "id" | "passport" | "licence";
 
 export type DiditStartResult = {
   session_id: string;
@@ -261,13 +263,14 @@ export type DiditStartResult = {
 
 export async function startDiditVerification(
   clerkId: string,
+  docType: DiditDocType = "id",
 ): Promise<DiditStartResult> {
-  console.log("DIDIT: creating session for", clerkId);
+  console.log(`DIDIT: creating session for ${clerkId} (${docType})`);
 
   const res = await fetchAPI("/(api)/didit-session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ clerkId }),
+    body: JSON.stringify({ clerkId, docType }),
   });
 
   const session: DiditStartResult | undefined = res?.data ?? res;
@@ -279,6 +282,46 @@ export async function startDiditVerification(
   }
 
   return session;
+}
+
+export async function syncDiditSessionDecision(
+  sessionId: string,
+  clerkId: string,
+  docType?: DiditDocType,
+) {
+  return fetchAPI("/(api)/didit-session-decision", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, clerkId, docType }),
+  });
+}
+
+export async function verifyDrivingLicenceNATIS(payload: {
+  nationalId: string;
+  lastName: string;
+  initials: string;
+  licenceNumber: string;
+  clerkId: string;
+}) {
+  return fetchAPI("/(api)/didit-licence", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function verifySouthAfricanIdDatabase(payload: {
+  nationalId: string;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: string;
+  clerkId: string;
+}) {
+  return fetchAPI("/(api)/didit-id-validation", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 // ─── Submitting ──────────────────────────────────────────────────────────────

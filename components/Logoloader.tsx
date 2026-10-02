@@ -219,7 +219,7 @@ const RING = LOGO + 34;
 
 const styles = StyleSheet.create({
   root: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 900,
     elevation: 900,
     backgroundColor: GREEN.deep,
