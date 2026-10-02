@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { fetchAPI } from "@/lib/fetch";
 import { useLocationStore } from "@/store";
@@ -21,7 +21,6 @@ type MapProps = {
   dropoffLatitude?: number | null;
   dropoffLongitude?: number | null;
   dropoffAddress?: string | null;
-  onHubPress?: (hub: Hub) => void;
 };
 
 type Point = {
@@ -55,7 +54,6 @@ export default function Map({
   dropoffLatitude,
   dropoffLongitude,
   dropoffAddress,
-  onHubPress,
 }: MapProps) {
   const { userLatitude, userLongitude } = useLocationStore();
   const [hubs, setHubs] = useState<Hub[]>([]);
@@ -122,34 +120,12 @@ export default function Map({
 
         return (
           <View key={`${point.label}-${point.latitude}-${point.longitude}`} className="absolute items-center" style={position}>
-            {point.icon === "business" ? (
-              <Pressable
-                onPress={() => {
-                  const hub = hubs.find(
-                    (candidate) =>
-                      candidate.latitude === point.latitude && candidate.longitude === point.longitude,
-                  );
-                  if (hub) onHubPress?.(hub);
-                }}
-                className="items-center"
-              >
-                <View className="items-center rounded-full border-2 border-white p-1 shadow-lg" style={{ backgroundColor: point.color }}>
-                  <Ionicons name={point.icon} size={15} color="#FFFFFF" />
-                </View>
-                <Text className="mt-1 max-w-[150px] rounded-md bg-white/70 px-2 py-1 text-center text-[10px] font-JakartaBold text-[#1B2C4D]" numberOfLines={1}>
-                  {point.label}
-                </Text>
-              </Pressable>
-            ) : (
-              <>
-                <View className="items-center rounded-full border-2 border-white p-1 shadow-lg" style={{ backgroundColor: point.color }}>
-                  <Ionicons name={point.icon} size={15} color="#FFFFFF" />
-                </View>
-                <Text className="mt-1 max-w-[150px] rounded-md bg-white/70 px-2 py-1 text-center text-[10px] font-JakartaBold text-[#1B2C4D]" numberOfLines={1}>
-                  {point.label}
-                </Text>
-              </>
-            )}
+            <View className="items-center rounded-full border-2 border-white p-1 shadow-lg" style={{ backgroundColor: point.color }}>
+              <Ionicons name={point.icon} size={15} color="#FFFFFF" />
+            </View>
+            <Text className="mt-1 max-w-[150px] rounded-md bg-white/70 px-2 py-1 text-center text-[10px] font-JakartaBold text-[#1B2C4D]" numberOfLines={1}>
+              {point.label}
+            </Text>
           </View>
         );
       })}
