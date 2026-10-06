@@ -1,28 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase-server";
-
-function resolveDriverVerificationStatus(driver: any) {
-  if (driver?.driver_verification_status) {
-    return driver.driver_verification_status;
-  }
-
-  if (driver?.verified === true) {
-    return "approved";
-  }
-
-  if (driver?.status === "approved") {
-    return "approved";
-  }
-
-  if (driver?.status === "pending") {
-    return "pending";
-  }
-
-  if (driver?.status === "rejected") {
-    return "rejected";
-  }
-
-  return "not_submitted";
-}
+import { resolveDriverVerificationStatus } from "@/lib/business-rules";
 
 function parseNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -93,10 +70,37 @@ export async function GET(request: Request) {
       }
     }
 
+    let driverRating = Number(profile?.rating ?? 5);
+    if (profile) {
+      const { data: ratings, error: ratingsError } = await supabase
+        .from("driver_ratings")
+        .select("rating")
+        .eq("driver_id", profile.id);
+
+      if (
+        ratingsError &&
+        ["42P01", "PGRST205"].includes(String(ratingsError.code))
+      ) {
+        console.warn(
+          "Driver ratings table is not installed yet; using the saved driver rating.",
+        );
+      } else if (ratingsError) {
+        throw ratingsError;
+      } else if (ratings?.length) {
+        driverRating =
+          ratings.reduce(
+            (total: number, entry: { rating: number }) =>
+              total + Number(entry.rating),
+            0,
+          ) / ratings.length;
+      }
+    }
+
     return Response.json({
       data: profile
         ? {
             ...profile,
+            rating: Number(driverRating.toFixed(2)),
             name: profile.full_name ?? null,
             profile_data: profile.profile_data ?? {},
             driver_verification_status: driverVerificationStatus,

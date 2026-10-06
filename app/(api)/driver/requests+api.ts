@@ -26,10 +26,7 @@ export async function GET(request: Request) {
     // Not an error — a newly registered driver simply has no record yet.
     if (!driver) return Response.json({ data: [] });
 
-    const { data: rides, error } = await supabase
-      .from("rides")
-      .select(
-        `ride_id,
+    const rideFields = `ride_id,
          origin_address,
          destination_address,
          origin_latitude,
@@ -46,8 +43,11 @@ export async function GET(request: Request) {
          created_at,
          completed_at,
          cancelled_at,
-         user_id`,
-      )
+         user_id`;
+
+    const { data: rides, error } = await supabase
+      .from("rides")
+      .select(rideFields)
       .eq("driver_id", driver.id)
       .order("scheduled_for", { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: false });
@@ -55,6 +55,37 @@ export async function GET(request: Request) {
     if (error) throw error;
 
     const ridesList = rides ?? [];
+    const rideIds = ridesList.map((ride: any) => String(ride.ride_id));
+    let ratingsByRideId: Record<string, { rating: number; comment: string | null }> = {};
+    if (rideIds.length > 0) {
+      const { data: ratings, error: ratingsError } = await supabase
+        .from("passenger_ratings")
+        .select("ride_id, rating, comment")
+        .in("ride_id", rideIds);
+
+      if (
+        ratingsError &&
+        ["42P01", "PGRST205"].includes(String(ratingsError.code))
+      ) {
+        console.warn(
+          "Passenger ratings table is not installed; apply passenger-rating.sql to enable ride ratings.",
+        );
+      } else if (ratingsError) {
+        throw ratingsError;
+      } else {
+        ratingsByRideId = (ratings ?? []).reduce(
+          (acc: Record<string, { rating: number; comment: string | null }>, rating: any) => {
+            acc[String(rating.ride_id)] = {
+              rating: rating.rating,
+              comment: rating.comment,
+            };
+            return acc;
+          },
+          {},
+        );
+      }
+    }
+
     const passengerIds = Array.from(
       new Set(
         ridesList
@@ -92,6 +123,9 @@ export async function GET(request: Request) {
 
       return {
         ...ride,
+        passenger_rating: ratingsByRideId[String(ride.ride_id)]?.rating ?? null,
+        passenger_rating_comment:
+          ratingsByRideId[String(ride.ride_id)]?.comment ?? null,
         status: ride.status ?? "booked",
         seats_booked: ride.seats_booked ?? 1,
         passenger: passenger

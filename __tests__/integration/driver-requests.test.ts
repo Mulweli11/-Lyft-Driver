@@ -98,6 +98,12 @@ describe('driver/requests API route', () => {
         });
         return usersChain;
       }
+        if (table === 'passenger_ratings') {
+         const chain: any = {};
+         chain.select = jest.fn().mockReturnValue(chain);
+         chain.in = jest.fn().mockResolvedValue({ data: [], error: null });
+         return chain;
+       }
       return { select: jest.fn().mockReturnThis() };
     });
 
