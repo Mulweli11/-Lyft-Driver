@@ -184,7 +184,7 @@ const Profile = () => {
               <StatCard
                 icon="star-outline"
                 label="Rating"
-                value={(profile?.rating ?? 5).toFixed(1)}
+                value={Number(profile?.rating ?? 5).toFixed(1)}
               />
               <StatCard
                 icon="car-sport-outline"
