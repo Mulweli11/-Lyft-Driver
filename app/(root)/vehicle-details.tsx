@@ -3,19 +3,20 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import CustomButton from "@/components/CustomButton";
+import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 
 type Vehicle = {
@@ -131,7 +132,7 @@ const VehicleDetails = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
+    <SafeAreaView className="flex-1 bg-[#F7F4FB]">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -140,18 +141,18 @@ const VehicleDetails = () => {
           <Pressable
             onPress={() => router.back()}
             hitSlop={8}
-            className="h-10 w-10 items-center justify-center rounded-xl border border-[#E2E9E5] bg-white active:opacity-70"
+            className="h-10 w-10 items-center justify-center rounded-xl border border-[#E9E2F0] bg-white active:opacity-70"
           >
-            <Ionicons name="chevron-back" size={20} color="#101814" />
+            <Ionicons name="chevron-back" size={20} color="#21152F" />
           </Pressable>
-          <Text className="text-[19px] font-JakartaExtraBold text-[#101814]">
+          <Text className="text-[19px] font-JakartaExtraBold text-[#21152F]">
             Your vehicle
           </Text>
         </View>
 
         {loading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#0E5C3F" />
+            <ActivityIndicator size="large" color="#5A189A" />
           </View>
         ) : (
           <ScrollView
@@ -160,42 +161,40 @@ const VehicleDetails = () => {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text className="mb-4 text-[13px] font-Jakarta leading-5 text-[#68756F]">
+            <Text className="mb-4 text-[13px] font-Jakarta leading-5 text-[#746A7E]">
               Passengers see the make, colour and registration so they can find
               you at pickup. It must match your licence disc.
             </Text>
 
-            <View className="rounded-3xl border border-[#E2E9E5] bg-white p-5">
+            <View className="rounded-3xl border border-[#E9E2F0] bg-white p-5">
               {FIELDS.map((field) => (
                 <View key={field.key} className="mb-4">
-                  <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+                  <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#746A7E]">
                     {field.label}
                   </Text>
                   <TextInput
                     value={String(vehicle[field.key] ?? "")}
                     onChangeText={(v) => set(field.key, v)}
                     placeholder={field.placeholder}
-                    placeholderTextColor="#B4BEB9"
+                    placeholderTextColor={ui.faint}
                     autoCapitalize={field.autoCapitalize ?? "sentences"}
                     keyboardType={field.keyboardType ?? "default"}
                     maxLength={field.maxLength}
-                    className="rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#101814]"
+                    className="rounded-2xl border-[1.5px] border-[#E9E2F0] bg-[#F7F4FB] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#21152F]"
                   />
                   {field.key === "year" && vehicle.year.length === 4 && !yearValid && (
-                    <Text className="ml-1 mt-1.5 text-[11.5px] font-JakartaMedium text-[#E04545]">
+                    <Text className="ml-1 mt-1.5 text-[11.5px] font-JakartaMedium text-[#E0575B]">
                       Enter a year between 1990 and {new Date().getFullYear() + 1}
                     </Text>
                   )}
                 </View>
               ))}
 
-              {/* Seats — a stepper, since "how many can you take" has six
-                  possible answers and none of them need a keyboard */}
-              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#746A7E]">
                 Seats for passengers
               </Text>
-              <View className="flex-row items-center justify-between rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3">
-                <Text className="text-[15px] font-JakartaBold text-[#101814]">
+              <View className="flex-row items-center justify-between rounded-2xl border-[1.5px] border-[#E9E2F0] bg-[#F7F4FB] px-4 py-3">
+                <Text className="text-[15px] font-JakartaBold text-[#21152F]">
                   {vehicle.seats} {vehicle.seats === 1 ? "seat" : "seats"}
                 </Text>
                 <View className="flex-row items-center gap-2">
@@ -203,17 +202,17 @@ const VehicleDetails = () => {
                     onPress={() => set("seats", Math.max(1, vehicle.seats - 1))}
                     className="h-9 w-9 items-center justify-center rounded-full bg-white active:opacity-70"
                   >
-                    <Ionicons name="remove" size={18} color="#0E5C3F" />
+                    <Ionicons name="remove" size={18} color="#5A189A" />
                   </Pressable>
                   <Pressable
                     onPress={() => set("seats", Math.min(6, vehicle.seats + 1))}
-                    className="h-9 w-9 items-center justify-center rounded-full bg-[#0E5C3F] active:opacity-70"
+                    className="h-9 w-9 items-center justify-center rounded-full bg-[#5A189A] active:opacity-70"
                   >
                     <Ionicons name="add" size={18} color="#fff" />
                   </Pressable>
                 </View>
               </View>
-              <Text className="ml-1 mt-1.5 text-[11px] font-Jakarta text-[#9BA6A1]">
+              <Text className="ml-1 mt-1.5 text-[11px] font-Jakarta text-[#A69BAF]">
                 Not counting the driver's seat
               </Text>
             </View>

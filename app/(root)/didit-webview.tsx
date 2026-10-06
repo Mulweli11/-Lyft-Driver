@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
+import { brand, ui } from "@/constants/theme";
 import { DiditDocType, syncDiditSessionDecision } from "@/lib/verification";
 
 export default function DiditWebViewScreen() {
@@ -100,19 +101,19 @@ export default function DiditWebViewScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
-      <View className="flex-row items-center gap-3 border-b border-[#E2E9E5] px-5 py-3">
+      <View className="flex-row items-center gap-3 border-b border-[#E9E2F0] px-5 py-3">
         <Pressable
           onPress={closeManually}
           hitSlop={8}
-          className="h-10 w-10 items-center justify-center rounded-xl border border-[#E2E9E5] bg-white active:opacity-70"
+          className="h-10 w-10 items-center justify-center rounded-xl border border-[#E9E2F0] bg-white active:opacity-70"
         >
-          <Ionicons name="close" size={20} color="#101814" />
+          <Ionicons name="close" size={20} color="#21152F" />
         </Pressable>
         <View className="flex-1">
-          <Text className="text-[16px] font-JakartaExtraBold text-[#101814]" numberOfLines={1}>
+          <Text className="text-[16px] font-JakartaExtraBold text-[#21152F]" numberOfLines={1}>
             {docTitle}
           </Text>
-          <Text className="text-[11px] font-JakartaMedium text-[#68756F]">
+          <Text className="text-[11px] font-JakartaMedium text-[#746A7E]">
             Powered by Didit Identity
           </Text>
         </View>
@@ -121,8 +122,8 @@ export default function DiditWebViewScreen() {
       <View className="flex-1 relative">
         {loading && (
           <View className="absolute inset-0 z-10 items-center justify-center bg-white">
-            <ActivityIndicator size="large" color="#0E5C3F" />
-            <Text className="mt-3 text-[13px] font-JakartaMedium text-[#68756F]">
+            <ActivityIndicator size="large" color="#5A189A" />
+            <Text className="mt-3 text-[13px] font-JakartaMedium text-[#746A7E]">
               Loading secure verification portal…
             </Text>
           </View>
@@ -131,18 +132,18 @@ export default function DiditWebViewScreen() {
         {syncing && (
           <View className="absolute inset-0 z-20 items-center justify-center bg-white/95 px-6">
             {syncSuccess === true ? (
-              <View className="h-16 w-16 items-center justify-center rounded-full bg-[#E6F2EC] mb-4">
-                <Ionicons name="checkmark-circle" size={44} color="#0E5C3F" />
+              <View className="h-16 w-16 items-center justify-center rounded-full bg-[#F0E6FA] mb-4">
+                <Ionicons name="checkmark-circle" size={44} color="#5A189A" />
               </View>
             ) : syncSuccess === false ? (
               <View className="h-16 w-16 items-center justify-center rounded-full bg-[#FEF3F3] mb-4">
                 <Ionicons name="alert-circle" size={44} color="#B02A2A" />
               </View>
             ) : (
-              <ActivityIndicator size="large" color="#0E5C3F" className="mb-4" />
+              <ActivityIndicator size="large" color="#5A189A" className="mb-4" />
             )}
 
-            <Text className="text-center text-[16px] font-JakartaBold text-[#101814]">
+            <Text className="text-center text-[16px] font-JakartaBold text-[#21152F]">
               {syncMessage}
             </Text>
           </View>

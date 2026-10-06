@@ -1,5 +1,6 @@
-import { TouchableOpacity, Text, ActivityIndicator } from "react-native";
+import { ActivityIndicator, Text, TouchableOpacity } from "react-native";
 
+import { brand } from "@/constants/theme";
 import { ButtonProps } from "@/types/type";
 
 const getBgVariantStyle = (variant: ButtonProps["bgVariant"]) => {
@@ -26,7 +27,7 @@ const getTextVariantStyle = (variant: ButtonProps["textVariant"]) => {
     case "danger":
       return "text-red-100";
     case "success":
-      return "text-green-100";
+      return "text-purple-100";
     default:
       return "text-white";
   }
@@ -48,7 +49,16 @@ const CustomButton = ({
     <TouchableOpacity
       onPress={onPress}
       disabled={disabled || loading}
-      className={`w-full rounded-3xl px-5 py-4 flex-row items-center justify-center gap-2 shadow-lg shadow-black/10 ${getBgVariantStyle(bgVariant)} ${disabled || loading ? "opacity-60" : ""} ${className}`}
+      className={`w-full h-[54px] rounded-full px-5 flex-row items-center justify-center gap-2 shadow-md ${getBgVariantStyle(
+        bgVariant
+      )} ${disabled || loading ? "opacity-50" : ""} ${className}`}
+      style={{
+        shadowColor: brand.dark,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 5,
+      }}
       {...props}
     >
       {loading ? (
@@ -60,7 +70,9 @@ const CustomButton = ({
         <>
           {IconLeft ? <IconLeft /> : null}
           <Text
-            className={`text-lg font-JakartaSemiBold ${getTextVariantStyle(textVariant)}`}
+            className={`text-[15px] font-JakartaBold ${getTextVariantStyle(
+              textVariant
+            )}`}
           >
             {title}
           </Text>

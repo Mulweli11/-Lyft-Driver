@@ -18,6 +18,7 @@ if (Platform.OS !== "web") {
 }
 
 import customMapStyle from "@/constants/mapStyle";
+import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 import { calculateRegion, fetchRouteCoordinates } from "@/lib/map";
 import { getSupabaseClient } from "@/lib/supabase";
@@ -47,7 +48,7 @@ export default function Map({
   dropoffLongitude?: number | null;
   dropoffAddress?: string | null;
 }) {
-  const { userLatitude, userLongitude } = useLocationStore();
+  const { userLatitude, userLongitude, selectedHubId, setHubPickup } = useLocationStore();
   const [hubs, setHubs] = useState<Hub[]>([]);
   const [driverToPickupRoute, setDriverToPickupRoute] = useState<Array<{ latitude: number; longitude: number }>>([]);
   const [pickupToDropoffRoute, setPickupToDropoffRoute] = useState<Array<{ latitude: number; longitude: number }>>([]);
@@ -161,8 +162,8 @@ export default function Map({
 
   if (Platform.OS === "web" || !MapView || !Marker || !Circle || !Polyline) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#DDEAF7] px-6">
-        <Text className="text-center text-[13px] font-Jakarta text-[#0E5C3F]">
+      <View className="flex-1 items-center justify-center bg-[#F7F4FB] px-6">
+        <Text className="text-center text-[13px] font-Jakarta text-[#5A189A]">
           Map preview is available on mobile. Your trip details are still available below.
         </Text>
       </View>
@@ -171,8 +172,8 @@ export default function Map({
 
   if (userLatitude == null || userLongitude == null) {
     return (
-      <View className="flex-1 items-center justify-center bg-[#DDEAF7]">
-        <ActivityIndicator size="large" color="#1B2C4D" />
+      <View className="flex-1 items-center justify-center bg-[#F7F4FB]">
+        <ActivityIndicator size="large" color="#5A189A" />
       </View>
     );
   }
@@ -189,48 +190,48 @@ export default function Map({
       mapType="standard"
       userInterfaceStyle="light"
     >
+      {/* User location ring (kept green as in passenger app) */}
+      <Circle
+        center={{ latitude: userLatitude, longitude: userLongitude }}
+        radius={180}
+        strokeColor="rgba(31,165,116,0.35)"
+        strokeWidth={1}
+        fillColor="rgba(31,165,116,0.18)"
+      />
+
       {hubs.map((hub) => (
         <React.Fragment key={hub.id}>
           <Circle
             center={{ latitude: hub.latitude, longitude: hub.longitude }}
             radius={hub.radius}
-            fillColor="rgba(14, 92, 63, 0.12)"
-            strokeColor="rgba(14, 92, 63, 0.45)"
-            strokeWidth={1}
+            fillColor="rgba(157, 78, 221, 0.12)"
+            strokeColor="#9D4EDD"
+            strokeWidth={2}
           />
           <Marker
+            testID={`hub-marker-${hub.id}`}
             coordinate={{ latitude: hub.latitude, longitude: hub.longitude }}
             title={hub.name}
             description={hub.address}
-            anchor={{ x: 0.5, y: 0.5 }}
-          >
-            <View
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: "#0E5C3F",
-                borderWidth: 3,
-                borderColor: "#FFFFFF",
-                alignItems: "center",
-                justifyContent: "center",
-                shadowColor: "#0E5C3F",
-                shadowOpacity: 0.25,
-                shadowRadius: 6,
-                shadowOffset: { width: 0, height: 3 },
-              }}
-            >
-              <Ionicons name="business" size={15} color="#FFFFFF" />
-            </View>
-          </Marker>
+            pinColor={selectedHubId === hub.id ? "#9D4EDD" : "#5A189A"}
+            onPress={() =>
+              setHubPickup?.({
+                id: hub.id,
+                name: hub.name,
+                latitude: hub.latitude,
+                longitude: hub.longitude,
+                address: hub.address,
+              })
+            }
+          />
         </React.Fragment>
       ))}
 
       {driverToPickupRoute.length > 1 && (
         <Polyline
           coordinates={driverToPickupRoute}
-          strokeColor="#FF7F50"
-          strokeWidth={5}
+          strokeColor="#9D4EDD"
+          strokeWidth={4}
           lineDashPattern={[]}
         />
       )}
@@ -238,8 +239,8 @@ export default function Map({
       {pickupToDropoffRoute.length > 1 && (
         <Polyline
           coordinates={pickupToDropoffRoute}
-          strokeColor="#00155F"
-          strokeWidth={4}
+          strokeColor="#E0575B"
+          strokeWidth={5}
           lineDashPattern={[]}
         />
       )}
@@ -257,10 +258,10 @@ export default function Map({
             width: 18,
             height: 18,
             borderRadius: 9,
-            backgroundColor: "#F7A13B",
+            backgroundColor: "#9D4EDD",
             borderWidth: 4,
-            borderColor: "#F4F7FB",
-            shadowColor: "#1B2C4D",
+            borderColor: "#F0E6FA",
+            shadowColor: "#1D1135",
             shadowOpacity: 0.35,
             shadowRadius: 6,
             shadowOffset: { width: 0, height: 3 },
@@ -282,12 +283,12 @@ export default function Map({
               width: 30,
               height: 30,
               borderRadius: 15,
-              backgroundColor: "#00155F",
+              backgroundColor: "#9D4EDD",
               borderWidth: 3,
               borderColor: "#FFFFFF",
               alignItems: "center",
               justifyContent: "center",
-              shadowColor: "#00155F",
+              shadowColor: "#9D4EDD",
               shadowOpacity: 0.25,
               shadowRadius: 6,
               shadowOffset: { width: 0, height: 3 },
@@ -312,12 +313,12 @@ export default function Map({
               width: 30,
               height: 30,
               borderRadius: 15,
-              backgroundColor: "#0E5C3F",
+              backgroundColor: "#5A189A",
               borderWidth: 3,
               borderColor: "#FFFFFF",
               alignItems: "center",
               justifyContent: "center",
-              shadowColor: "#0E5C3F",
+              shadowColor: "#5A189A",
               shadowOpacity: 0.25,
               shadowRadius: 6,
               shadowOffset: { width: 0, height: 3 },

@@ -10,22 +10,13 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import Map from "@/components/Map";
+import { brand, ui } from "@/constants/theme";
 
 type Props = {
   title: string;
   snapPoints?: string[];
   children: React.ReactNode;
-  /**
-   * How the sheet holds its content:
-   *  - "scroll" (default) — wraps children in BottomSheetScrollView
-   *  - "view"             — fixed height, no scrolling
-   *  - "list"             — renders children raw, so the screen can supply its
-   *                         own BottomSheetFlatList. Use this whenever the
-   *                         content is a list, or React Native warns about
-   *                         VirtualizedLists nested in a ScrollView.
-   */
   mode?: "scroll" | "view" | "list";
-  /** @deprecated use `mode` instead. Kept so old call sites still work. */
   scrollable?: boolean;
   subtitle?: string;
 };
@@ -41,8 +32,6 @@ const RideLayout = ({
   const bottomSheetRef = useRef<BottomSheet>(null);
   const insets = useSafeAreaInsets();
 
-  // Backwards compatible: honour `scrollable` if it was passed, otherwise the
-  // old title-string behaviour.
   const resolvedMode: "scroll" | "view" | "list" =
     mode ??
     (scrollable === false || title === "Choose a Rider" ? "view" : "scroll");
@@ -54,12 +43,12 @@ const RideLayout = ({
   };
 
   return (
-    <GestureHandlerRootView className="flex-1 bg-[#06231A]">
+    <GestureHandlerRootView className="flex-1 bg-[#1D1135]">
       <View className="flex-1">
         {/* Full-screen map */}
         <Map />
 
-        {/* Floating header — sits below the notch on every device */}
+        {/* Floating header */}
         <View
           className="absolute left-5 right-5 z-50 flex-row items-center"
           style={{ top: insets.top + 8 }}
@@ -72,18 +61,18 @@ const RideLayout = ({
             hitSlop={8}
             className="h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-lg shadow-black/20"
           >
-            <Ionicons name="chevron-back" size={21} color="#101814" />
+            <Ionicons name="chevron-back" size={21} color="#21152F" />
           </TouchableOpacity>
 
           <View className="ml-3 flex-shrink rounded-2xl bg-white px-4 py-2.5 shadow-lg shadow-black/20">
             <Text
-              className="text-[15px] font-JakartaBold text-[#101814]"
+              className="text-[15px] font-JakartaBold text-[#21152F]"
               numberOfLines={1}
             >
               {title}
             </Text>
             {!!subtitle && (
-              <Text className="mt-0.5 text-[11.5px] font-Jakarta text-[#68756F]">
+              <Text className="mt-0.5 text-[11.5px] font-Jakarta text-[#746A7E]">
                 {subtitle}
               </Text>
             )}
@@ -102,12 +91,12 @@ const RideLayout = ({
             borderTopRightRadius: 30,
           }}
           handleIndicatorStyle={{
-            backgroundColor: "#DFE6E2",
+            backgroundColor: "#E9E2F0",
             width: 44,
             height: 4,
           }}
           style={{
-            shadowColor: "#000",
+            shadowColor: "#100820",
             shadowOffset: { width: 0, height: -8 },
             shadowOpacity: 0.12,
             shadowRadius: 20,
@@ -115,7 +104,6 @@ const RideLayout = ({
           }}
         >
           {resolvedMode === "list" ? (
-            // Raw — the screen provides its own BottomSheetFlatList
             children
           ) : resolvedMode === "view" ? (
             <BottomSheetView style={{ flex: 1, ...padding }}>

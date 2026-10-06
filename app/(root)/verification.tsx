@@ -18,6 +18,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import CustomButton from "@/components/CustomButton";
+import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 import {
   DOC_LABELS,
@@ -57,22 +58,22 @@ const STATUS_BANNER: Record<
   { bg: string; icon: any; title: string; body: string; tint: string }
 > = {
   not_submitted: {
-    bg: "bg-[#E6F2EC]",
-    tint: "#0E5C3F",
+    bg: "bg-[#F0E6FA]",
+    tint: "#5A189A",
     icon: "shield-outline",
     title: "Get approved to drive",
     body: "We verify your ID, licence, permit, and vehicle before you can accept passengers.",
   },
   pending: {
-    bg: "bg-[#FDF4E3]",
-    tint: "#8A6100",
+    bg: "bg-[#FFF6E5]",
+    tint: "#D99A1B",
     icon: "time-outline",
     title: "Under review",
     body: "Driver checks usually take one to two working days. We'll notify you as soon as you're approved.",
   },
   approved: {
-    bg: "bg-[#E6F2EC]",
-    tint: "#0E5C3F",
+    bg: "bg-[#F0E6FA]",
+    tint: "#5A189A",
     icon: "shield-checkmark",
     title: "You're approved to drive",
     body: "Your identity and documents are verified. You can publish trips and accept passengers.",
@@ -98,10 +99,8 @@ const DriverVerification = () => {
   const [busyKind, setBusyKind] = useState<DocKind | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Profile data for prefilling
   const [driverProfile, setDriverProfile] = useState<any>(null);
 
-  // Didit per-document state
   const [diditBusy, setDiditBusy] = useState<DiditDocType | null>(null);
   const [diditDone, setDiditDone] = useState<Record<DiditDocType, boolean>>({
     id: false,
@@ -109,15 +108,12 @@ const DriverVerification = () => {
     licence: false,
   });
 
-  // Verified numbers to show in UI
   const [verifiedNumbers, setVerifiedNumbers] = useState<{
     id?: string | null;
     passport?: string | null;
     licence?: string | null;
   }>({});
 
-  // ─── Modal States ──────────────────────────────────────────────────────────
-  // Licence NATIS Modal
   const [licenceModalVisible, setLicenceModalVisible] = useState(false);
   const [licenceNumber, setLicenceNumber] = useState("");
   const [licenceNationalId, setLicenceNationalId] = useState("");
@@ -126,7 +122,6 @@ const DriverVerification = () => {
   const [licenceSubmitting, setLicenceSubmitting] = useState(false);
   const [licenceError, setLicenceError] = useState<string | null>(null);
 
-  // SA ID Home Affairs Modal
   const [saIdModalVisible, setSaIdModalVisible] = useState(false);
   const [saIdNumber, setSaIdNumber] = useState("");
   const [saIdFirstName, setSaIdFirstName] = useState("");
@@ -154,7 +149,6 @@ const DriverVerification = () => {
       );
       setReason(record.driver_rejection_reason ?? null);
 
-      // Restore verified ticks and details from DB
       const isIdDone = record.id_verified === true;
       const isPassportDone = record.passport_verified === true;
       const isLicenceDone = record.licence_verified === true;
@@ -176,7 +170,6 @@ const DriverVerification = () => {
         licence: licenceNum,
       });
 
-      // Pre-fill modal states if empty
       if (record.id_number) {
         setLicenceNationalId(record.id_number);
         setSaIdNumber(record.id_number);
@@ -207,11 +200,10 @@ const DriverVerification = () => {
 
   const locked = status === "pending" || status === "approved";
 
-  // Holistic progress calculation (5 items: ID or Passport, Licence, PDP, Reg, Insurance)
   const identityDone = diditDone.id || diditDone.passport ? 1 : 0;
   const licenceDone = diditDone.licence ? 1 : 0;
   const docsDone = REQUIRED.filter((kind) => picked[kind]).length;
-  const totalItems = 2 + REQUIRED.length; // 5
+  const totalItems = 2 + REQUIRED.length;
   const totalDone = identityDone + licenceDone + docsDone;
   const progress = Math.round((totalDone / totalItems) * 100);
 
@@ -246,7 +238,6 @@ const DriverVerification = () => {
     ]);
   };
 
-  // Launch Didit KYC Biometric Webview
   const launchDiditSession = async (docType: DiditDocType) => {
     if (!user?.id) {
       Alert.alert("Not signed in", "Please sign in again.");
@@ -274,7 +265,6 @@ const DriverVerification = () => {
     }
   };
 
-  // SA ID Verification trigger
   const handleIdVerifyPress = () => {
     Alert.alert(
       "Verify South African ID",
@@ -296,7 +286,6 @@ const DriverVerification = () => {
     );
   };
 
-  // SA ID Home Affairs submit
   const handleSaIdSubmit = async () => {
     if (!saIdNumber.trim() || !saIdFirstName.trim() || !saIdLastName.trim() || !saIdDob.trim()) {
       setSaIdError("Please fill in all the required fields.");
@@ -339,7 +328,6 @@ const DriverVerification = () => {
     }
   };
 
-  // Licence NATIS submit
   const handleLicenceSubmit = async () => {
     if (
       !licenceNumber.trim() ||
@@ -385,7 +373,6 @@ const DriverVerification = () => {
     }
   };
 
-  // Submit all documents
   const submit = async () => {
     if (!canSubmit || !user?.id) return;
     setSubmitting(true);
@@ -431,14 +418,12 @@ const DriverVerification = () => {
 
   const banner = STATUS_BANNER[status];
 
-  // Helper to mask numbers for privacy
   const maskNumber = (num?: string | null) => {
     if (!num) return "";
     if (num.length <= 4) return num;
     return `•••• ${num.slice(-4)}`;
   };
 
-  // ─── Upload row ─────────────────────────────────────────────────────────
   const DocRow = ({ kind }: { kind: DocKind }) => {
     const image = picked[kind];
     const busy = busyKind === kind;
@@ -453,26 +438,26 @@ const DriverVerification = () => {
           disabled={locked || busy}
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           className={`flex-row items-center rounded-2xl border-[1.5px] p-3.5 ${
-            image ? "border-[#0E5C3F] bg-[#F2F8F5]" : "border-[#E2E9E5] bg-white"
+            image ? "border-[#5A189A] bg-[#F0E6FA]" : "border-[#E9E2F0] bg-white"
           }`}
         >
           {image ? (
             <Image
               source={{ uri: image.uri }}
-              className="h-14 w-14 rounded-xl bg-[#EEF1F0]"
+              className="h-14 w-14 rounded-xl bg-[#F0E6FA]"
             />
           ) : (
-            <View className="h-14 w-14 items-center justify-center rounded-xl bg-[#E6F2EC]">
-              <Ionicons name="document-text-outline" size={22} color="#0E5C3F" />
+            <View className="h-14 w-14 items-center justify-center rounded-xl bg-[#F0E6FA]">
+              <Ionicons name="document-text-outline" size={22} color="#5A189A" />
             </View>
           )}
 
           <View className="ml-3.5 flex-1">
-            <Text className="text-[14.5px] font-JakartaBold text-[#101814]">
+            <Text className="text-[14.5px] font-JakartaBold text-[#21152F]">
               {label.title}
             </Text>
             <Text
-              className="mt-1 text-[11.5px] font-Jakarta leading-4 text-[#68756F]"
+              className="mt-1 text-[11.5px] font-Jakarta leading-4 text-[#746A7E]"
               numberOfLines={2}
             >
               {image ? "Ready to submit. Tap to replace." : label.help}
@@ -481,13 +466,13 @@ const DriverVerification = () => {
 
           <View className="ml-2">
             {busy ? (
-              <ActivityIndicator size="small" color="#0E5C3F" />
+              <ActivityIndicator size="small" color="#5A189A" />
             ) : image ? (
-              <View className="h-6 w-6 items-center justify-center rounded-full bg-[#1FB574]">
+              <View className="h-6 w-6 items-center justify-center rounded-full bg-[#9D4EDD]">
                 <Ionicons name="checkmark" size={14} color="#fff" />
               </View>
             ) : (
-              <Ionicons name="add-circle-outline" size={22} color="#9BA6A1" />
+              <Ionicons name="add-circle-outline" size={22} color="#A69BAF" />
             )}
           </View>
         </Pressable>
@@ -496,21 +481,21 @@ const DriverVerification = () => {
           <View
             className={`mt-2 flex-row items-center rounded-2xl border-[1.5px] px-4 ${
               needsDate
-                ? "border-[#E3A008] bg-[#FDF8EB]"
-                : "border-[#E2E9E5] bg-white"
+                ? "border-[#D99A1B] bg-[#FFF6E5]"
+                : "border-[#E9E2F0] bg-white"
             }`}
           >
-            <Ionicons name="calendar-outline" size={16} color="#68756F" />
+            <Ionicons name="calendar-outline" size={16} color="#746A7E" />
             <TextInput
               value={expiries[kind] ?? ""}
               onChangeText={(v) =>
                 setExpiries((prev) => ({ ...prev, [kind]: v }))
               }
               placeholder="Expiry date — YYYY-MM-DD"
-              placeholderTextColor="#B4BEB9"
+              placeholderTextColor={ui.faint}
               keyboardType="numbers-and-punctuation"
               maxLength={10}
-              className="ml-2.5 h-[46px] flex-1 text-[13.5px] font-JakartaMedium text-[#101814]"
+              className="ml-2.5 h-[46px] flex-1 text-[13.5px] font-JakartaMedium text-[#21152F]"
             />
           </View>
         )}
@@ -518,7 +503,6 @@ const DriverVerification = () => {
     );
   };
 
-  // ─── Didit Verification Card ────────────────────────────────────────────
   const DiditCard = ({
     docType,
     title,
@@ -543,24 +527,24 @@ const DriverVerification = () => {
       <View
         className={`mb-3.5 rounded-3xl border-[1.5px] p-5 ${
           verified
-            ? "border-[#1FB574] bg-[#E8F7EF]"
-            : "border-[#0E5C3F] bg-[#F2F8F5]"
+            ? "border-[#9D4EDD] bg-[#F0E6FA]"
+            : "border-[#5A189A] bg-[#F7F4FB]"
         }`}
       >
         <View className="flex-row items-center gap-2">
-          <Ionicons name={icon} size={20} color="#0E5C3F" />
-          <Text className="text-[15px] font-JakartaExtraBold text-[#101814]">
+          <Ionicons name={icon} size={20} color="#5A189A" />
+          <Text className="text-[15px] font-JakartaExtraBold text-[#21152F]">
             {title}
           </Text>
           {verified && (
-            <View className="ml-auto flex-row items-center gap-1.5 rounded-full bg-[#1FB574] px-2.5 py-1">
+            <View className="ml-auto flex-row items-center gap-1.5 rounded-full bg-[#9D4EDD] px-2.5 py-1">
               <Ionicons name="checkmark" size={13} color="#fff" />
               <Text className="text-[11px] font-JakartaBold text-white">Verified</Text>
             </View>
           )}
         </View>
 
-        <Text className="mt-2 text-[12.5px] font-Jakarta leading-4 text-[#4A5450]">
+        <Text className="mt-2 text-[12.5px] font-Jakarta leading-4 text-[#746A7E]">
           {verified ? `${verifiedLabel} ${maskedValue ? `(${maskedValue})` : ""}` : help}
         </Text>
 
@@ -582,24 +566,23 @@ const DriverVerification = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
-      {/* Top Header */}
+    <SafeAreaView className="flex-1 bg-[#F7F4FB]">
       <View className="flex-row items-center gap-3 px-5 pb-2 pt-2">
         <Pressable
           onPress={() => router.back()}
           hitSlop={8}
-          className="h-10 w-10 items-center justify-center rounded-xl border border-[#E2E9E5] bg-white active:opacity-70"
+          className="h-10 w-10 items-center justify-center rounded-xl border border-[#E9E2F0] bg-white active:opacity-70"
         >
-          <Ionicons name="chevron-back" size={20} color="#101814" />
+          <Ionicons name="chevron-back" size={20} color="#21152F" />
         </Pressable>
-        <Text className="text-[19px] font-JakartaExtraBold text-[#101814]">
+        <Text className="text-[19px] font-JakartaExtraBold text-[#21152F]">
           Driver verification
         </Text>
       </View>
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#0E5C3F" />
+          <ActivityIndicator size="large" color="#5A189A" />
         </View>
       ) : (
         <ScrollView
@@ -608,7 +591,6 @@ const DriverVerification = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Banner */}
           <View className={`mb-5 rounded-3xl p-5 ${banner.bg}`}>
             <Ionicons name={banner.icon} size={26} color={banner.tint} />
             <Text
@@ -617,7 +599,7 @@ const DriverVerification = () => {
             >
               {banner.title}
             </Text>
-            <Text className="mt-1.5 text-[13px] font-Jakarta leading-5 text-[#4A5450]">
+            <Text className="mt-1.5 text-[13px] font-Jakarta leading-5 text-[#746A7E]">
               {banner.body}
             </Text>
 
@@ -626,36 +608,34 @@ const DriverVerification = () => {
                 <Text className="text-[11px] font-JakartaBold uppercase tracking-wider text-[#B02A2A]">
                   Reason
                 </Text>
-                <Text className="mt-1 text-[13px] font-JakartaMedium text-[#101814]">
+                <Text className="mt-1 text-[13px] font-JakartaMedium text-[#21152F]">
                   {reason}
                 </Text>
               </View>
             )}
           </View>
 
-          {/* Progress Card */}
-          <View className="mb-5 rounded-3xl border border-[#E2E9E5] bg-white p-5">
+          <View className="mb-5 rounded-3xl border border-[#E9E2F0] bg-white p-5">
             <View className="flex-row items-center justify-between">
-              <Text className="text-[15px] font-JakartaExtraBold text-[#101814]">
+              <Text className="text-[15px] font-JakartaExtraBold text-[#21152F]">
                 Verification progress
               </Text>
-              <Text className="text-[18px] font-JakartaExtraBold text-[#0E5C3F]">
+              <Text className="text-[18px] font-JakartaExtraBold text-[#5A189A]">
                 {progress}%
               </Text>
             </View>
-            <View className="mt-3 h-2 overflow-hidden rounded-full bg-[#EEF1F0]">
+            <View className="mt-3 h-2 overflow-hidden rounded-full bg-[#F0E6FA]">
               <View
-                className="h-2 rounded-full bg-[#1FB574]"
+                className="h-2 rounded-full bg-[#9D4EDD]"
                 style={{ width: `${progress}%` }}
               />
             </View>
-            <Text className="mt-2 text-[11.5px] font-Jakarta text-[#68756F]">
+            <Text className="mt-2 text-[11.5px] font-Jakarta text-[#746A7E]">
               {totalDone} of {totalItems} requirements fulfilled
             </Text>
           </View>
 
-          {/* Identity Section */}
-          <Text className="mb-3 text-[15px] font-JakartaExtraBold text-[#101814]">
+          <Text className="mb-3 text-[15px] font-JakartaExtraBold text-[#21152F]">
             1. Identity & Licence Verification
           </Text>
 
@@ -692,21 +672,20 @@ const DriverVerification = () => {
             }}
           />
 
-          {/* Documents Section */}
-          <Text className="mb-1 mt-4 text-[15px] font-JakartaExtraBold text-[#101814]">
+          <Text className="mb-1 mt-4 text-[15px] font-JakartaExtraBold text-[#21152F]">
             2. Permit & Vehicle Documents
           </Text>
-          <Text className="mb-3 text-[11.5px] font-Jakarta text-[#9BA6A1]">
+          <Text className="mb-3 text-[11.5px] font-Jakarta text-[#A69BAF]">
             Upload clear photos or scans of your permits and vehicle certificates.
           </Text>
 
           {SECTIONS.map((section) => (
             <View key={section.title}>
-              <Text className="mb-1 text-[14px] font-JakartaBold text-[#2B3531]">
+              <Text className="mb-1 text-[14px] font-JakartaBold text-[#21152F]">
                 {section.title}
               </Text>
               {!!section.note && (
-                <Text className="mb-2.5 text-[11.5px] font-Jakarta leading-4 text-[#9BA6A1]">
+                <Text className="mb-2.5 text-[11.5px] font-Jakarta leading-4 text-[#A69BAF]">
                   {section.note}
                 </Text>
               )}
@@ -717,16 +696,14 @@ const DriverVerification = () => {
             </View>
           ))}
 
-          {/* Privacy Note */}
-          <View className="mt-2 flex-row gap-2.5 rounded-2xl border border-[#E2E9E5] bg-white p-4">
-            <Ionicons name="lock-closed-outline" size={16} color="#0E5C3F" />
-            <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#68756F]">
+          <View className="mt-2 flex-row gap-2.5 rounded-2xl border border-[#E9E2F0] bg-white p-4">
+            <Ionicons name="lock-closed-outline" size={16} color="#5A189A" />
+            <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#746A7E]">
               Your documents are encrypted and safely stored. Verified credentials are
               validated securely against official registries.
             </Text>
           </View>
 
-          {/* Submit Action */}
           {!locked && (
             <View className="mt-6">
               <CustomButton
@@ -736,7 +713,7 @@ const DriverVerification = () => {
                 onPress={submit}
               />
               {!canSubmit && !submitting && (
-                <Text className="mt-2.5 text-center text-[11.5px] font-Jakarta text-[#9BA6A1]">
+                <Text className="mt-2.5 text-center text-[11.5px] font-Jakarta text-[#A69BAF]">
                   {missingExpiry
                     ? "Add the expiry date for each expiring document"
                     : `${REQUIRED.length - docsDone} document${
@@ -749,7 +726,7 @@ const DriverVerification = () => {
         </ScrollView>
       )}
 
-      {/* ─── Driving Licence NATIS Modal ─────────────────────────────────── */}
+      {/* Driving Licence NATIS Modal */}
       <Modal
         visible={licenceModalVisible}
         animationType="slide"
@@ -769,24 +746,24 @@ const DriverVerification = () => {
             style={{ paddingBottom: insets.bottom + 16 }}
           >
             <View className="items-center pb-2">
-              <View className="h-1.5 w-12 rounded-full bg-[#DFE6E2]" />
+              <View className="h-1.5 w-12 rounded-full bg-[#E9E2F0]" />
             </View>
 
             <View className="flex-row items-center justify-between pb-3">
               <View className="flex-1">
-                <Text className="text-[18px] font-JakartaExtraBold text-[#101814]">
+                <Text className="text-[18px] font-JakartaExtraBold text-[#21152F]">
                   Verify Driving Licence
                 </Text>
-                <Text className="mt-0.5 text-[12px] font-Jakarta text-[#68756F]">
+                <Text className="mt-0.5 text-[12px] font-Jakarta text-[#746A7E]">
                   Validated directly against the South African NATIS register.
                 </Text>
               </View>
               <Pressable
                 onPress={() => setLicenceModalVisible(false)}
                 hitSlop={8}
-                className="h-8 w-8 items-center justify-center rounded-full bg-[#EEF1F0]"
+                className="h-8 w-8 items-center justify-center rounded-full bg-[#F0E6FA]"
               >
-                <Ionicons name="close" size={18} color="#68756F" />
+                <Ionicons name="close" size={18} color="#746A7E" />
               </Pressable>
             </View>
 
@@ -800,58 +777,58 @@ const DriverVerification = () => {
             )}
 
             <ScrollView showsVerticalScrollIndicator={false} className="max-h-[380px]">
-              <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#101814]">
+              <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#21152F]">
                 Driving Licence Card Number *
               </Text>
               <TextInput
                 value={licenceNumber}
                 onChangeText={setLicenceNumber}
                 placeholder="e.g. 12345678"
-                placeholderTextColor="#A0ABA5"
+                placeholderTextColor={ui.faint}
                 autoCapitalize="characters"
-                className="mb-3 h-12 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-3.5 text-[14px] font-JakartaMedium text-[#101814]"
+                className="mb-3 h-12 rounded-xl border border-[#E9E2F0] bg-[#F7F4FB] px-3.5 text-[14px] font-JakartaMedium text-[#21152F]"
               />
 
-              <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#101814]">
+              <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#21152F]">
                 National ID Number *
               </Text>
               <TextInput
                 value={licenceNationalId}
                 onChangeText={setLicenceNationalId}
                 placeholder="13-digit SA ID number"
-                placeholderTextColor="#A0ABA5"
+                placeholderTextColor={ui.faint}
                 keyboardType="numeric"
                 maxLength={13}
-                className="mb-3 h-12 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-3.5 text-[14px] font-JakartaMedium text-[#101814]"
+                className="mb-3 h-12 rounded-xl border border-[#E9E2F0] bg-[#F7F4FB] px-3.5 text-[14px] font-JakartaMedium text-[#21152F]"
               />
 
               <View className="flex-row gap-3">
                 <View className="flex-1">
-                  <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#101814]">
+                  <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#21152F]">
                     Last Name *
                   </Text>
                   <TextInput
                     value={licenceLastName}
                     onChangeText={setLicenceLastName}
                     placeholder="e.g. Dlamini"
-                    placeholderTextColor="#A0ABA5"
+                    placeholderTextColor={ui.faint}
                     autoCapitalize="words"
-                    className="mb-3 h-12 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-3.5 text-[14px] font-JakartaMedium text-[#101814]"
+                    className="mb-3 h-12 rounded-xl border border-[#E9E2F0] bg-[#F7F4FB] px-3.5 text-[14px] font-JakartaMedium text-[#21152F]"
                   />
                 </View>
 
                 <View className="w-24">
-                  <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#101814]">
+                  <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#21152F]">
                     Initials *
                   </Text>
                   <TextInput
                     value={licenceInitials}
                     onChangeText={setLicenceInitials}
                     placeholder="e.g. S"
-                    placeholderTextColor="#A0ABA5"
+                    placeholderTextColor={ui.faint}
                     autoCapitalize="characters"
                     maxLength={4}
-                    className="mb-3 h-12 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-3.5 text-[14px] font-JakartaMedium text-[#101814]"
+                    className="mb-3 h-12 rounded-xl border border-[#E9E2F0] bg-[#F7F4FB] px-3.5 text-[14px] font-JakartaMedium text-[#21152F]"
                   />
                 </View>
               </View>
@@ -868,7 +845,7 @@ const DriverVerification = () => {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* ─── South African ID Home Affairs Modal ─────────────────────────── */}
+      {/* South African ID Home Affairs Modal */}
       <Modal
         visible={saIdModalVisible}
         animationType="slide"
@@ -888,24 +865,24 @@ const DriverVerification = () => {
             style={{ paddingBottom: insets.bottom + 16 }}
           >
             <View className="items-center pb-2">
-              <View className="h-1.5 w-12 rounded-full bg-[#DFE6E2]" />
+              <View className="h-1.5 w-12 rounded-full bg-[#E9E2F0]" />
             </View>
 
             <View className="flex-row items-center justify-between pb-3">
               <View className="flex-1">
-                <Text className="text-[18px] font-JakartaExtraBold text-[#101814]">
+                <Text className="text-[18px] font-JakartaExtraBold text-[#21152F]">
                   Verify South African ID
                 </Text>
-                <Text className="mt-0.5 text-[12px] font-Jakarta text-[#68756F]">
+                <Text className="mt-0.5 text-[12px] font-Jakarta text-[#746A7E]">
                   Instant verification directly against Department of Home Affairs.
                 </Text>
               </View>
               <Pressable
                 onPress={() => setSaIdModalVisible(false)}
                 hitSlop={8}
-                className="h-8 w-8 items-center justify-center rounded-full bg-[#EEF1F0]"
+                className="h-8 w-8 items-center justify-center rounded-full bg-[#F0E6FA]"
               >
-                <Ionicons name="close" size={18} color="#68756F" />
+                <Ionicons name="close" size={18} color="#746A7E" />
               </Pressable>
             </View>
 
@@ -919,60 +896,60 @@ const DriverVerification = () => {
             )}
 
             <ScrollView showsVerticalScrollIndicator={false} className="max-h-[380px]">
-              <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#101814]">
+              <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#21152F]">
                 13-Digit SA ID Number *
               </Text>
               <TextInput
                 value={saIdNumber}
                 onChangeText={setSaIdNumber}
                 placeholder="e.g. 9001015009087"
-                placeholderTextColor="#A0ABA5"
+                placeholderTextColor={ui.faint}
                 keyboardType="numeric"
                 maxLength={13}
-                className="mb-3 h-12 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-3.5 text-[14px] font-JakartaMedium text-[#101814]"
+                className="mb-3 h-12 rounded-xl border border-[#E9E2F0] bg-[#F7F4FB] px-3.5 text-[14px] font-JakartaMedium text-[#21152F]"
               />
 
               <View className="flex-row gap-3">
                 <View className="flex-1">
-                  <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#101814]">
+                  <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#21152F]">
                     First Name *
                   </Text>
                   <TextInput
                     value={saIdFirstName}
                     onChangeText={setSaIdFirstName}
                     placeholder="e.g. Sipho"
-                    placeholderTextColor="#A0ABA5"
+                    placeholderTextColor={ui.faint}
                     autoCapitalize="words"
-                    className="mb-3 h-12 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-3.5 text-[14px] font-JakartaMedium text-[#101814]"
+                    className="mb-3 h-12 rounded-xl border border-[#E9E2F0] bg-[#F7F4FB] px-3.5 text-[14px] font-JakartaMedium text-[#21152F]"
                   />
                 </View>
 
                 <View className="flex-1">
-                  <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#101814]">
+                  <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#21152F]">
                     Last Name *
                   </Text>
                   <TextInput
                     value={saIdLastName}
                     onChangeText={setSaIdLastName}
                     placeholder="e.g. Dlamini"
-                    placeholderTextColor="#A0ABA5"
+                    placeholderTextColor={ui.faint}
                     autoCapitalize="words"
-                    className="mb-3 h-12 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-3.5 text-[14px] font-JakartaMedium text-[#101814]"
+                    className="mb-3 h-12 rounded-xl border border-[#E9E2F0] bg-[#F7F4FB] px-3.5 text-[14px] font-JakartaMedium text-[#21152F]"
                   />
                 </View>
               </View>
 
-              <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#101814]">
+              <Text className="mb-1 text-[12.5px] font-JakartaBold text-[#21152F]">
                 Date of Birth (YYYY-MM-DD) *
               </Text>
               <TextInput
                 value={saIdDob}
                 onChangeText={setSaIdDob}
                 placeholder="e.g. 1990-01-01"
-                placeholderTextColor="#A0ABA5"
+                placeholderTextColor={ui.faint}
                 keyboardType="numbers-and-punctuation"
                 maxLength={10}
-                className="mb-3 h-12 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-3.5 text-[14px] font-JakartaMedium text-[#101814]"
+                className="mb-3 h-12 rounded-xl border border-[#E9E2F0] bg-[#F7F4FB] px-3.5 text-[14px] font-JakartaMedium text-[#21152F]"
               />
             </ScrollView>
 

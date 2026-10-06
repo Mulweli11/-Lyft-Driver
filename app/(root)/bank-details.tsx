@@ -3,20 +3,21 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import CustomButton from "@/components/CustomButton";
 import OptionSheet from "@/components/OptionSheet";
+import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 
 const BANKS = [
@@ -56,7 +57,6 @@ const BankDetails = () => {
             setHolder(stored.holder ?? "");
             setBank(stored.bank ?? "");
             setAccountType(stored.account_type ?? "Cheque");
-            // Only the masked form is ever shown back
             setAccountNumber(stored.last4 ? `•••• ${stored.last4}` : "");
           }
         } catch (error) {
@@ -90,8 +90,6 @@ const BankDetails = () => {
               holder: holder.trim(),
               bank,
               account_type: accountType,
-              // Store the full number only if you genuinely process payouts.
-              // For the project the masked form is enough, and safer.
               last4: digits.slice(-4),
             },
           },
@@ -109,7 +107,7 @@ const BankDetails = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
+    <SafeAreaView className="flex-1 bg-[#F7F4FB]">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -118,18 +116,18 @@ const BankDetails = () => {
           <Pressable
             onPress={() => router.back()}
             hitSlop={8}
-            className="h-10 w-10 items-center justify-center rounded-xl border border-[#E2E9E5] bg-white active:opacity-70"
+            className="h-10 w-10 items-center justify-center rounded-xl border border-[#E9E2F0] bg-white active:opacity-70"
           >
-            <Ionicons name="chevron-back" size={20} color="#101814" />
+            <Ionicons name="chevron-back" size={20} color="#21152F" />
           </Pressable>
-          <Text className="text-[19px] font-JakartaExtraBold text-[#101814]">
+          <Text className="text-[19px] font-JakartaExtraBold text-[#21152F]">
             Payout account
           </Text>
         </View>
 
         {loading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#0E5C3F" />
+            <ActivityIndicator size="large" color="#5A189A" />
           </View>
         ) : (
           <ScrollView
@@ -138,55 +136,55 @@ const BankDetails = () => {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text className="mb-4 text-[13px] font-Jakarta leading-5 text-[#68756F]">
+            <Text className="mb-4 text-[13px] font-Jakarta leading-5 text-[#746A7E]">
               Your earnings are paid into this account. It must be in your own
               name — third-party accounts can't be used.
             </Text>
 
-            <View className="rounded-3xl border border-[#E2E9E5] bg-white p-5">
-              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+            <View className="rounded-3xl border border-[#E9E2F0] bg-white p-5">
+              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#746A7E]">
                 Account holder
               </Text>
               <TextInput
                 value={holder}
                 onChangeText={setHolder}
                 placeholder="Name exactly as the bank has it"
-                placeholderTextColor="#B4BEB9"
+                placeholderTextColor={ui.faint}
                 autoCapitalize="words"
-                className="mb-4 rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#101814]"
+                className="mb-4 rounded-2xl border-[1.5px] border-[#E9E2F0] bg-[#F7F4FB] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#21152F]"
               />
 
-              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#746A7E]">
                 Bank
               </Text>
               <Pressable
                 onPress={() => setSheet("bank")}
-                className="mb-4 flex-row items-center justify-between rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 active:opacity-80"
+                className="mb-4 flex-row items-center justify-between rounded-2xl border-[1.5px] border-[#E9E2F0] bg-[#F7F4FB] px-4 py-3.5 active:opacity-80"
               >
                 <Text
                   className={`text-[15px] font-JakartaMedium ${
-                    bank ? "text-[#101814]" : "text-[#B4BEB9]"
+                    bank ? "text-[#21152F]" : "text-[#A69BAF]"
                   }`}
                 >
                   {bank || "Choose your bank"}
                 </Text>
-                <Ionicons name="chevron-down" size={17} color="#9BA6A1" />
+                <Ionicons name="chevron-down" size={17} color="#A69BAF" />
               </Pressable>
 
-              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#746A7E]">
                 Account type
               </Text>
               <Pressable
                 onPress={() => setSheet("type")}
-                className="mb-4 flex-row items-center justify-between rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 active:opacity-80"
+                className="mb-4 flex-row items-center justify-between rounded-2xl border-[1.5px] border-[#E9E2F0] bg-[#F7F4FB] px-4 py-3.5 active:opacity-80"
               >
-                <Text className="text-[15px] font-JakartaMedium text-[#101814]">
+                <Text className="text-[15px] font-JakartaMedium text-[#21152F]">
                   {accountType}
                 </Text>
-                <Ionicons name="chevron-down" size={17} color="#9BA6A1" />
+                <Ionicons name="chevron-down" size={17} color="#A69BAF" />
               </Pressable>
 
-              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+              <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#746A7E]">
                 Account number
               </Text>
               <TextInput
@@ -196,21 +194,21 @@ const BankDetails = () => {
                   if (editingExisting) setAccountNumber("");
                 }}
                 placeholder="e.g. 62345678901"
-                placeholderTextColor="#B4BEB9"
+                placeholderTextColor={ui.faint}
                 keyboardType="number-pad"
                 maxLength={14}
-                className="rounded-2xl border-[1.5px] border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#101814]"
+                className="rounded-2xl border-[1.5px] border-[#E9E2F0] bg-[#F7F4FB] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#21152F]"
               />
               {!editingExisting && digits.length > 0 && digits.length < 7 && (
-                <Text className="ml-1 mt-1.5 text-[11.5px] font-JakartaMedium text-[#E04545]">
+                <Text className="ml-1 mt-1.5 text-[11.5px] font-JakartaMedium text-[#E0575B]">
                   Account numbers are at least 7 digits
                 </Text>
               )}
             </View>
 
-            <View className="mt-4 flex-row gap-2.5 rounded-2xl border border-[#E2E9E5] bg-white p-4">
-              <Ionicons name="lock-closed-outline" size={16} color="#0E5C3F" />
-              <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#68756F]">
+            <View className="mt-4 flex-row gap-2.5 rounded-2xl border border-[#E9E2F0] bg-white p-4">
+              <Ionicons name="lock-closed-outline" size={16} color="#5A189A" />
+              <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#746A7E]">
                 We store only the last four digits of your account number. Full
                 details are captured by the payment provider when payouts go live.
               </Text>
@@ -224,7 +222,7 @@ const BankDetails = () => {
                 onPress={save}
               />
               {editingExisting && (
-                <Text className="mt-2.5 text-center text-[11.5px] font-Jakarta text-[#9BA6A1]">
+                <Text className="mt-2.5 text-center text-[11.5px] font-Jakarta text-[#A69BAF]">
                   Tap the account number to replace it
                 </Text>
               )}

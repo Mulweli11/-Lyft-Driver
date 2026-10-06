@@ -1,13 +1,14 @@
 ﻿import { useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-
-import Map from "@/components/Map";
-import { fetchAPI } from "@/lib/fetch";
-import { useLocationStore } from "@/store";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Animated, Pressable, Text, View } from "react-native";
+
+import Map from "@/components/Map";
+import { brand, ui } from "@/constants/theme";
+import { fetchAPI } from "@/lib/fetch";
+import { useLocationStore } from "@/store";
 
 const Home = () => {
   const { user } = useUser();
@@ -287,7 +288,7 @@ const Home = () => {
   const driverName = user?.firstName ? `${user.firstName}` : "Driver";
 
   return (
-    <View className="flex-1 bg-[#DDEAF7]">
+    <View className="flex-1 bg-[#F7F4FB]">
       <Map
         passengerLatitude={activeRideLocation?.pickup.latitude ?? null}
         passengerLongitude={activeRideLocation?.pickup.longitude ?? null}
@@ -297,17 +298,18 @@ const Home = () => {
         dropoffAddress={activeRideLocation?.destination.address ?? null}
       />
 
+      {/* Floating Header */}
       <View className="absolute inset-x-0 top-0 z-20 px-4 pt-12">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2.5">
-            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-[#F4F7FB] shadow-[0_8px_20px_rgba(17,37,74,0.12)]">
-              <Ionicons name="person" size={22} color="#1B2C4D" />
+            <View className="h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-lg shadow-black/10">
+              <Ionicons name="person" size={22} color="#21152F" />
             </View>
             <View>
-              <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.14em] text-[#1B2C4D]">
+              <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.14em] text-[#746A7E]">
                 Driver
               </Text>
-              <Text className="text-[18px] font-JakartaExtraBold text-[#1B2C4D]">
+              <Text className="text-[18px] font-JakartaExtraBold text-[#21152F]">
                 {driverName}
               </Text>
             </View>
@@ -315,21 +317,21 @@ const Home = () => {
 
           <Pressable
             onPress={() => router.push("/(root)/(tabs)/chat")}
-            className="h-11 w-11 items-center justify-center rounded-2xl bg-[#F4F7FB] shadow-[0_8px_20px_rgba(17,37,74,0.1)]"
+            className="h-11 w-11 items-center justify-center rounded-2xl bg-white shadow-lg shadow-black/10"
           >
-            <Ionicons name="notifications-outline" size={22} color="#1B2C4D" />
+            <Ionicons name="notifications-outline" size={22} color="#21152F" />
           </Pressable>
         </View>
 
-        <View className="mt-4 rounded-[28px] bg-[#F4F7FB]/90 p-4 shadow-[0_18px_38px_rgba(17,37,74,0.12)]">
+        <View className="mt-4 rounded-[28px] bg-white/95 p-4 shadow-xl shadow-black/10 border border-[#E9E2F0]">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <View
                 className={`h-2.5 w-2.5 rounded-full ${
-                  isOnline ? "bg-[#F7A13B]" : "bg-[#C9D3E1]"
+                  isOnline ? "bg-[#9D4EDD]" : "bg-[#A69BAF]"
                 }`}
               />
-              <Text className="text-[11px] font-JakartaBold uppercase tracking-[0.12em] text-[#1B2C4D]">
+              <Text className="text-[11px] font-JakartaBold uppercase tracking-[0.12em] text-[#21152F]">
                 {isOnline ? "Online" : "Offline"}
               </Text>
             </View>
@@ -338,12 +340,12 @@ const Home = () => {
               onPress={handleToggleOnline}
               disabled={!canGoOnline}
               className={`rounded-full px-3 py-1.5 ${
-                !canGoOnline ? "bg-[#DDE3EA]" : isOnline ? "bg-[#F7A13B]" : "bg-[#E2E8F2]"
+                !canGoOnline ? "bg-[#E9E2F0]" : isOnline ? "bg-[#5A189A]" : "bg-[#F0E6FA]"
               }`}
             >
               <Text
                 className={`text-[11px] font-JakartaBold ${
-                  !canGoOnline ? "text-[#6D7A89]" : isOnline ? "text-white" : "text-[#1B2C4D]"
+                  !canGoOnline ? "text-[#746A7E]" : isOnline ? "text-white" : "text-[#5A189A]"
                 }`}
               >
                 {!canGoOnline ? "Not approved" : isOnline ? "Available" : "Set online"}
@@ -351,73 +353,73 @@ const Home = () => {
             </Pressable>
           </View>
 
-          <Text className="mt-4 text-[28px] font-JakartaExtraBold leading-[32px] text-[#1B2C4D]">
+          <Text className="mt-4 text-[26px] font-JakartaExtraBold leading-[30px] text-[#21152F]">
             {isOnline ? "Ready to drive" : "Take your next trip"}
           </Text>
 
-          <View className="mt-3 flex-row items-center gap-2 rounded-2xl bg-[#EBF0F6] px-3 py-2.5">
-            <Ionicons name="location-sharp" size={18} color="#1B2C4D" />
-            <Text className="flex-1 text-[13px] font-JakartaMedium text-[#1B2C4D]" numberOfLines={1}>
+          <View className="mt-3 flex-row items-center gap-2 rounded-2xl bg-[#F7F4FB] px-3 py-2.5 border border-[#E9E2F0]">
+            <Ionicons name="location-sharp" size={18} color="#5A189A" />
+            <Text className="flex-1 text-[13px] font-JakartaMedium text-[#21152F]" numberOfLines={1}>
               {userAddress ?? "Locating you..."}
             </Text>
           </View>
-
         </View>
       </View>
 
+      {/* Incoming Request Popup */}
       {incomingRequest && (
         <Animated.View
           className="absolute inset-x-0 bottom-[104px] z-30 px-4"
           style={{ transform: [{ translateY: popupTranslateY }] }}
         >
-          <View className="rounded-[28px] bg-white p-4 shadow-[0_18px_40px_rgba(17,37,74,0.18)]">
+          <View className="rounded-[28px] bg-white p-4 shadow-2xl shadow-black/20 border border-[#E9E2F0]">
             <View className="flex-row items-center justify-between">
               <View className="flex-row items-center gap-2.5">
-                <View className="h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#E6F2EC]">
-                  <Ionicons name="person" size={18} color="#1B2C4D" />
+                <View className="h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-[#F0E6FA]">
+                  <Ionicons name="person" size={18} color="#5A189A" />
                 </View>
 
                 <View>
-                  <Text className="text-[12px] font-JakartaBold uppercase tracking-[0.12em] text-[#778292]">
+                  <Text className="text-[12px] font-JakartaBold uppercase tracking-[0.12em] text-[#746A7E]">
                     New request
                   </Text>
-                  <Text className="text-[15px] font-JakartaExtraBold text-[#1B2C4D]">
+                  <Text className="text-[15px] font-JakartaExtraBold text-[#21152F]">
                     {incomingRequest?.passenger?.first_name ?? "Passenger"}
                   </Text>
                 </View>
               </View>
 
               <View className="items-end">
-                <Text className="text-[11px] font-JakartaMedium text-[#7B8696]">Trip</Text>
-                <Text className="text-[17px] font-JakartaExtraBold text-[#1B2C4D]">
+                <Text className="text-[11px] font-JakartaMedium text-[#746A7E]">Trip</Text>
+                <Text className="text-[17px] font-JakartaExtraBold text-[#5A189A]">
                   R{((incomingRequest?.fare_price ?? 0) / 100).toFixed(2)}
                 </Text>
               </View>
             </View>
 
-            <View className="mt-4 border-t border-[#EAEFF4] pt-3">
+            <View className="mt-4 border-t border-[#E9E2F0] pt-3">
               <View className="flex-row items-center gap-3">
                 <View className="items-center">
-                  <View className="h-3 w-3 rounded-full bg-[#00155F]" />
-                  <View className="my-1 h-6 w-[2px] bg-[#D9E1EB]" />
-                  <View className="h-3 w-3 rounded-[4px] bg-[#FF7F50]" />
+                  <View className="h-3 w-3 rounded-full bg-[#9D4EDD]" />
+                  <View className="my-1 h-6 w-[2px] bg-[#E9E2F0]" />
+                  <View className="h-3 w-3 rounded-[4px] bg-[#5A189A]" />
                 </View>
 
                 <View className="flex-1 gap-3">
                   <View>
-                    <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.1em] text-[#7B8696]">
+                    <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.1em] text-[#746A7E]">
                       Pickup point
                     </Text>
-                    <Text className="mt-1 text-[13px] font-JakartaBold text-[#1B2C4D]" numberOfLines={2}>
+                    <Text className="mt-1 text-[13px] font-JakartaBold text-[#21152F]" numberOfLines={2}>
                       {incomingRequest?.origin_address ?? "Pickup location"}
                     </Text>
                   </View>
 
                   <View>
-                    <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.1em] text-[#7B8696]">
+                    <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.1em] text-[#746A7E]">
                       Drop off
                     </Text>
-                    <Text className="mt-1 text-[13px] font-JakartaBold text-[#1B2C4D]" numberOfLines={2}>
+                    <Text className="mt-1 text-[13px] font-JakartaBold text-[#21152F]" numberOfLines={2}>
                       {incomingRequest?.destination_address ?? "Destination"}
                     </Text>
                   </View>
@@ -428,16 +430,16 @@ const Home = () => {
             <View className="mt-4 flex-row gap-2">
               <Pressable
                 onPress={() => void handleIncomingRequestAction("decline")}
-                className="flex-1 rounded-full border border-[#DDE5EE] bg-[#F4F7FB] px-3 py-3"
+                className="flex-1 rounded-full border border-[#E9E2F0] bg-[#FEF3F3] px-3 py-3"
               >
-                <Text className="text-center text-[13px] font-JakartaBold text-[#1B2C4D]">
+                <Text className="text-center text-[13px] font-JakartaBold text-[#B02A2A]">
                   Decline
                 </Text>
               </Pressable>
 
               <Pressable
                 onPress={() => void handleIncomingRequestAction("accept")}
-                className="flex-1 rounded-full bg-[#00155F] px-3 py-3"
+                className="flex-1 rounded-full bg-[#5A189A] px-3 py-3"
               >
                 <Text className="text-center text-[13px] font-JakartaBold text-white">
                   Accept
@@ -448,12 +450,13 @@ const Home = () => {
         </Animated.View>
       )}
 
+      {/* Online Status / Seats Banner */}
       {!incomingRequest && showStatusCard && (
         <View className="absolute inset-x-0 bottom-[104px] z-20 px-4">
-          <View className="rounded-[28px] bg-[#11254A] p-4 shadow-[0_18px_40px_rgba(17,37,74,0.24)]">
+          <View className="rounded-[28px] bg-[#1D1135] p-4 shadow-2xl shadow-black/30">
             <View className="flex-row items-center justify-between">
               <View>
-                <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.14em] text-[#DDE9F7]">
+                <Text className="text-[10px] font-JakartaBold uppercase tracking-[0.14em] text-[#C77DFF]">
                   Status
                 </Text>
                 <Text className="mt-1 text-[20px] font-JakartaExtraBold text-white">
@@ -465,7 +468,7 @@ const Home = () => {
                 onPress={() => setShowStatusCard(true)}
                 className="flex-row items-center gap-2 rounded-full bg-white/10 px-3 py-2"
               >
-                <View className={`h-2.5 w-2.5 rounded-full ${isOnline ? "bg-[#34D399]" : "bg-[#D7DED9]"}`} />
+                <View className={`h-2.5 w-2.5 rounded-full ${isOnline ? "bg-[#C77DFF]" : "bg-[#A69BAF]"}`} />
                 <Text className="text-[12px] font-JakartaBold text-white">
                   {isOnline ? "Active" : "Offline"}
                 </Text>
@@ -474,8 +477,8 @@ const Home = () => {
 
             <View className="mt-4 flex-row items-center justify-between rounded-2xl bg-white/10 px-3 py-3">
               <View className="flex-row items-center gap-2">
-                <Ionicons name="car-sport" size={18} color="#F7A13B" />
-                <Text className="text-[13px] font-JakartaMedium text-[#E8EEF8]">
+                <Ionicons name="car-sport" size={18} color="#C77DFF" />
+                <Text className="text-[13px] font-JakartaMedium text-[#F0E6FA]">
                   Available seats
                 </Text>
               </View>
@@ -503,7 +506,6 @@ const Home = () => {
           </View>
         </View>
       )}
-
     </View>
   );
 };

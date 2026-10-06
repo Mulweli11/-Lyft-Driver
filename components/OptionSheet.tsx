@@ -1,17 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import {
-    Modal,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { brand, ui } from "@/constants/theme";
 
 export type Option = {
   value: string;
   label: string;
-  /** Optional second line — use it for context, not decoration. */
   description?: string;
 };
 
@@ -25,11 +26,6 @@ type Props = {
   onClose: () => void;
 };
 
-/**
- * A bottom sheet of mutually exclusive choices.
- * Used anywhere a free-text field would let people type something the app
- * can't act on — language, gender, vehicle preference.
- */
 export default function OptionSheet({
   visible,
   title,
@@ -48,7 +44,6 @@ export default function OptionSheet({
       transparent
       onRequestClose={onClose}
     >
-      {/* Tapping the backdrop closes — expected on every platform */}
       <Pressable className="flex-1 bg-black/40" onPress={onClose} />
 
       <View
@@ -56,16 +51,16 @@ export default function OptionSheet({
         style={{ paddingBottom: insets.bottom + 12, maxHeight: "78%" }}
       >
         <View className="items-center pb-1 pt-3">
-          <View className="h-1 w-11 rounded-full bg-[#DFE6E2]" />
+          <View className="h-1 w-11 rounded-full bg-[#E9E2F0]" />
         </View>
 
         <View className="flex-row items-start justify-between px-5 pb-3 pt-3">
           <View className="flex-1 pr-3">
-            <Text className="text-[18px] font-JakartaExtraBold text-[#101814]">
+            <Text className="text-[18px] font-JakartaExtraBold text-[#21152F]">
               {title}
             </Text>
             {!!subtitle && (
-              <Text className="mt-1 text-[12.5px] font-Jakarta text-[#68756F]">
+              <Text className="mt-1 text-[12.5px] font-Jakarta text-[#746A7E]">
                 {subtitle}
               </Text>
             )}
@@ -74,9 +69,9 @@ export default function OptionSheet({
           <Pressable
             onPress={onClose}
             hitSlop={10}
-            className="h-8 w-8 items-center justify-center rounded-full bg-[#EEF1F0] active:opacity-70"
+            className="h-8 w-8 items-center justify-center rounded-full bg-[#F0E6FA] active:opacity-70"
           >
-            <Ionicons name="close" size={17} color="#68756F" />
+            <Ionicons name="close" size={17} color="#746A7E" />
           </Pressable>
         </View>
 
@@ -97,22 +92,22 @@ export default function OptionSheet({
                 }}
                 className={`mb-2 flex-row items-center rounded-2xl border-[1.5px] px-4 py-3.5 ${
                   active
-                    ? "border-[#0E5C3F] bg-[#E6F2EC]"
-                    : "border-[#E2E9E5] bg-white"
+                    ? "border-[#5A189A] bg-[#F0E6FA]"
+                    : "border-[#E9E2F0] bg-white"
                 } active:opacity-80`}
               >
                 <View className="flex-1">
                   <Text
                     className={`text-[14.5px] ${
                       active
-                        ? "font-JakartaBold text-[#0E5C3F]"
-                        : "font-JakartaSemiBold text-[#101814]"
+                        ? "font-JakartaBold text-[#5A189A]"
+                        : "font-JakartaSemiBold text-[#21152F]"
                     }`}
                   >
                     {option.label}
                   </Text>
                   {!!option.description && (
-                    <Text className="mt-0.5 text-[12px] font-Jakarta text-[#68756F]">
+                    <Text className="mt-0.5 text-[12px] font-Jakarta text-[#746A7E]">
                       {option.description}
                     </Text>
                   )}
@@ -120,7 +115,7 @@ export default function OptionSheet({
 
                 <View
                   className={`ml-3 h-5 w-5 items-center justify-center rounded-full border-2 ${
-                    active ? "border-[#0E5C3F] bg-[#0E5C3F]" : "border-[#DFE6E2]"
+                    active ? "border-[#5A189A] bg-[#5A189A]" : "border-[#E9E2F0]"
                   }`}
                 >
                   {active && <Ionicons name="checkmark" size={11} color="#fff" />}
@@ -134,9 +129,6 @@ export default function OptionSheet({
   );
 }
 
-// ─── Shared option sets ──────────────────────────────────────────────────────
-
-/** All twelve official languages of South Africa. */
 export const SA_LANGUAGES: Option[] = [
   { value: "English", label: "English" },
   { value: "isiZulu", label: "isiZulu" },

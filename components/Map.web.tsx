@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
+import { brand } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 import { useLocationStore } from "@/store";
 
@@ -94,25 +95,25 @@ export default function Map({
     latitude: hub.latitude,
     longitude: hub.longitude,
     label: hub.name,
-    color: "#0E5C3F",
+    color: brand.dark,
     icon: "business",
   }));
   const tripPoints: Point[] = [
     ...(userLatitude != null && userLongitude != null
-      ? [{ latitude: userLatitude, longitude: userLongitude, label: "Your location", color: "#F7A13B", icon: "navigate" as const }]
+      ? [{ latitude: userLatitude, longitude: userLongitude, label: "Your location", color: brand.accent, icon: "navigate" as const }]
       : []),
     ...(passengerLatitude != null && passengerLongitude != null
-      ? [{ latitude: passengerLatitude, longitude: passengerLongitude, label: passengerAddress ?? "Pickup", color: "#00155F", icon: "person" as const }]
+      ? [{ latitude: passengerLatitude, longitude: passengerLongitude, label: passengerAddress ?? "Pickup", color: brand.dark, icon: "person" as const }]
       : []),
     ...(dropoffLatitude != null && dropoffLongitude != null
-      ? [{ latitude: dropoffLatitude, longitude: dropoffLongitude, label: dropoffAddress ?? "Drop-off", color: "#FF7F50", icon: "location-sharp" as const }]
+      ? [{ latitude: dropoffLatitude, longitude: dropoffLongitude, label: dropoffAddress ?? "Drop-off", color: "#E0575B", icon: "location-sharp" as const }]
       : []),
   ];
   const points = [...hubPoints, ...tripPoints];
 
   return (
-    <View className="relative flex-1 overflow-hidden bg-[#DDEAF7]">
-      <View className="absolute inset-0 opacity-40" style={{ backgroundColor: "#C9E3D7" }} />
+    <View className="relative flex-1 overflow-hidden bg-[#F7F4FB]">
+      <View className="absolute inset-0 opacity-40" style={{ backgroundColor: "#F0E6FA" }} />
       <View className="absolute inset-0" style={{ backgroundImage: "linear-gradient(35deg, transparent 48%, #ffffff 49%, #ffffff 51%, transparent 52%), linear-gradient(120deg, transparent 48%, #ffffff 49%, #ffffff 51%, transparent 52%)", backgroundSize: "180px 140px" } as never} />
 
       {points.length > 0 && points.map((point) => {
@@ -123,7 +124,7 @@ export default function Map({
             <View className="items-center rounded-full border-2 border-white p-1 shadow-lg" style={{ backgroundColor: point.color }}>
               <Ionicons name={point.icon} size={15} color="#FFFFFF" />
             </View>
-            <Text className="mt-1 max-w-[150px] rounded-md bg-white/70 px-2 py-1 text-center text-[10px] font-JakartaBold text-[#1B2C4D]" numberOfLines={1}>
+            <Text className="mt-1 max-w-[150px] rounded-md bg-white/70 px-2 py-1 text-center text-[10px] font-JakartaBold text-[#21152F]" numberOfLines={1}>
               {point.label}
             </Text>
           </View>
@@ -132,10 +133,10 @@ export default function Map({
 
       <View className="absolute inset-x-4 bottom-4 flex-row items-center justify-between rounded-2xl bg-white/70 px-3 py-2">
         <View className="flex-row items-center gap-2">
-          <View className="h-2.5 w-2.5 rounded-full bg-[#0E5C3F]" />
-          <Text className="text-[11px] font-JakartaBold text-[#1B2C4D]">Active hubs</Text>
+          <View className="h-2.5 w-2.5 rounded-full bg-[#5A189A]" />
+          <Text className="text-[11px] font-JakartaBold text-[#21152F]">Active hubs</Text>
         </View>
-        <Text className="text-[11px] font-JakartaMedium text-[#68756F]">{hubs.length} available</Text>
+        <Text className="text-[11px] font-JakartaMedium text-[#746A7E]">{hubs.length} available</Text>
       </View>
     </View>
   );

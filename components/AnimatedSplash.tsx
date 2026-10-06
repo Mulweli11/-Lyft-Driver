@@ -7,13 +7,14 @@ import {
   View,
 } from "react-native";
 
+import { brand } from "@/constants/theme";
+
 type Props = {
   onFinish: () => void;
 };
 
 const { width: screenWidth } = Dimensions.get("window");
 
-// CSS CSS Variable Clamps translated to React Native numbers
 const ringSize = Math.min(Math.max(screenWidth * 0.19, 90), 155);
 const ringGap = Math.min(Math.max(screenWidth * 0.016, 6), 12);
 const archWidth = Math.min(Math.max(screenWidth * 0.38, 170), 280);
@@ -28,7 +29,6 @@ export default function AnimatedSplash({ onFinish }: Props) {
   const rootScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // 2.4s duration matching CSS infinite alternate animation
     const logoAnimation = Animated.loop(
       Animated.sequence([
         Animated.timing(progress, {
@@ -49,7 +49,7 @@ export default function AnimatedSplash({ onFinish }: Props) {
     logoAnimation.start();
 
     const splashAnimation = Animated.sequence([
-      Animated.delay(10000),
+      Animated.delay(1800),
       Animated.parallel([
         Animated.timing(rootFade, {
           toValue: 0,
@@ -79,7 +79,6 @@ export default function AnimatedSplash({ onFinish }: Props) {
     };
   }, [onFinish, progress, rootFade, rootScale]);
 
-  // Keyframes from HTML style @keyframes arch-sway
   const archRotation = progress.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: ["-6deg", "0deg", "6deg"],
@@ -90,7 +89,6 @@ export default function AnimatedSplash({ onFinish }: Props) {
     outputRange: [-2, 0, -2],
   });
 
-  // Keyframes from @keyframes left-ring-morph
   const leftScaleX = progress.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [1.04, 0.97, 1],
@@ -106,7 +104,6 @@ export default function AnimatedSplash({ onFinish }: Props) {
     outputRange: ["-3deg", "0deg", "2deg"],
   });
 
-  // Keyframes from @keyframes right-ring-morph
   const rightScaleX = progress.interpolate({
     inputRange: [0, 0.5, 1],
     outputRange: [1, 0.97, 1.04],
@@ -134,7 +131,6 @@ export default function AnimatedSplash({ onFinish }: Props) {
       ]}
     >
       <View style={styles.logoStage}>
-        {/* Arch Wrapper positioned like CSS calc(paddingBottom + ringSize - overlapOffset) */}
         <Animated.View
           style={[
             styles.archWrap,
@@ -149,7 +145,6 @@ export default function AnimatedSplash({ onFinish }: Props) {
           <View style={styles.topArch} />
         </Animated.View>
 
-        {/* Rings Row */}
         <View style={styles.ringsRow}>
           <Animated.View
             style={[
@@ -195,7 +190,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#151128",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -223,7 +218,7 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "transparent",
     borderWidth: archStroke,
-    borderColor: "rgb(48, 52, 56)",
+    borderColor: brand.accent,
     borderBottomWidth: 0,
     borderTopLeftRadius: archWidth,
     borderTopRightRadius: archWidth,
@@ -247,16 +242,16 @@ const styles = StyleSheet.create({
     marginHorizontal: ringGap / 2,
   },
   leftRing: {
-    backgroundColor: "#d2fe52",
+    backgroundColor: brand.dark,
   },
   rightRing: {
-    backgroundColor: "#d2fe52",
+    backgroundColor: brand.mint,
   },
   ringHole: {
     position: "absolute",
     width: "47%",
     height: "47%",
     borderRadius: 999,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#151128",
   },
 });

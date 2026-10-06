@@ -15,11 +15,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import CustomButton from "@/components/CustomButton";
+import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
-
-// ─── Per-field behaviour ─────────────────────────────────────────────────────
-// Keyboard, validation and help text depend on what's being edited, so they
-// live in one table rather than scattered through the component.
 
 type FieldConfig = {
   placeholder: string;
@@ -27,7 +24,6 @@ type FieldConfig = {
   autoCapitalize?: "none" | "words" | "sentences";
   multiline?: boolean;
   help?: string;
-  /** Where the value lives: a top-level column, or inside profile_data. */
   nested?: boolean;
   validate?: (value: string) => string | null;
 };
@@ -123,8 +119,6 @@ const EditProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Prefill with what's already saved — an empty box gives no clue what the
-  // current value is, and people retype things unnecessarily.
   useEffect(() => {
     (async () => {
       if (!user?.id || !field) {
@@ -162,8 +156,6 @@ const EditProfile = () => {
     setSaving(true);
 
     try {
-      // Nested fields have to be merged, not replaced, or saving one
-      // preference wipes all the others.
       let payload: Record<string, unknown>;
 
       if (config.nested) {
@@ -191,7 +183,7 @@ const EditProfile = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
+    <SafeAreaView className="flex-1 bg-[#F7F4FB]">
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -201,18 +193,18 @@ const EditProfile = () => {
           <Ionicons
             name="chevron-back"
             size={22}
-            color="#101814"
+            color="#21152F"
             onPress={() => router.back()}
             suppressHighlighting
           />
-          <Text className="text-[19px] font-JakartaExtraBold text-[#101814]">
+          <Text className="text-[19px] font-JakartaExtraBold text-[#21152F]">
             {label || "Edit profile"}
           </Text>
         </View>
 
         {loading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#0E5C3F" />
+            <ActivityIndicator size="large" color="#5A189A" />
           </View>
         ) : (
           <ScrollView
@@ -220,8 +212,8 @@ const EditProfile = () => {
             contentContainerStyle={{ paddingTop: 14, paddingBottom: 40 }}
             keyboardShouldPersistTaps="handled"
           >
-            <View className="rounded-3xl border border-[#E2E9E5] bg-white p-5">
-              <Text className="mb-2.5 text-[12.5px] font-JakartaSemiBold text-[#4A5450]">
+            <View className="rounded-3xl border border-[#E9E2F0] bg-white p-5">
+              <Text className="mb-2.5 text-[12.5px] font-JakartaSemiBold text-[#746A7E]">
                 {label}
               </Text>
 
@@ -232,28 +224,28 @@ const EditProfile = () => {
                   if (error) setError(null);
                 }}
                 placeholder={config.placeholder}
-                placeholderTextColor="#B4BEB9"
+                placeholderTextColor={ui.faint}
                 keyboardType={config.keyboardType ?? "default"}
                 autoCapitalize={config.autoCapitalize ?? "sentences"}
                 multiline={config.multiline}
                 autoFocus
-                className={`rounded-2xl border-[1.5px] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#101814] ${
+                className={`rounded-2xl border-[1.5px] px-4 py-3.5 text-[15px] font-JakartaMedium text-[#21152F] ${
                   error
-                    ? "border-[#E04545] bg-[#FEF3F3]"
-                    : "border-[#E2E9E5] bg-[#F8FAF9]"
+                    ? "border-[#E0575B] bg-[#FEF3F3]"
+                    : "border-[#E9E2F0] bg-[#F7F4FB]"
                 }`}
                 style={config.multiline ? { minHeight: 96, textAlignVertical: "top" } : undefined}
               />
 
               {error ? (
                 <View className="mt-2 flex-row items-center gap-1.5">
-                  <Ionicons name="alert-circle-outline" size={14} color="#E04545" />
-                  <Text className="text-[12px] font-JakartaMedium text-[#E04545]">
+                  <Ionicons name="alert-circle-outline" size={14} color="#E0575B" />
+                  <Text className="text-[12px] font-JakartaMedium text-[#E0575B]">
                     {error}
                   </Text>
                 </View>
               ) : config.help ? (
-                <Text className="ml-1 mt-2 text-[11.5px] font-Jakarta leading-4 text-[#9BA6A1]">
+                <Text className="ml-1 mt-2 text-[11.5px] font-Jakarta leading-4 text-[#A69BAF]">
                   {config.help}
                 </Text>
               ) : null}

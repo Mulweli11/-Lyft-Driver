@@ -9,22 +9,13 @@ import {
   View,
 } from "react-native";
 
+import { brand } from "@/constants/theme";
+
 const { width } = Dimensions.get("window");
 
-const GREEN = {
-  deep:   "#06231A",
-  dark:   "#0E5C3F",
-  mid:    "#12724F",
-  accent: "#1FB574",
-  mint:   "#6FEFB4",
-};
-
 type Props = {
-  /** Called once the exit animation has finished. Omit to loop forever. */
   onFinish?: () => void;
-  /** How long to hold before fading out. Ignored when onFinish is omitted. */
   duration?: number;
-  /** Small line under the logo, e.g. "Finding rides near you" */
   label?: string;
 };
 
@@ -33,20 +24,18 @@ export default function LogoLoader({
   duration = 1100,
   label = "Loading",
 }: Props) {
-  const rootFade  = useRef(new Animated.Value(1)).current;
+  const rootFade = useRef(new Animated.Value(1)).current;
   const logoScale = useRef(new Animated.Value(0.7)).current;
-  const logoFade  = useRef(new Animated.Value(0)).current;
-  const breathe   = useRef(new Animated.Value(1)).current;
-  const arcSpin   = useRef(new Animated.Value(0)).current;
+  const logoFade = useRef(new Animated.Value(0)).current;
+  const breathe = useRef(new Animated.Value(1)).current;
+  const arcSpin = useRef(new Animated.Value(0)).current;
   const haloScale = useRef(new Animated.Value(0.6)).current;
-  const haloFade  = useRef(new Animated.Value(0)).current;
+  const haloFade = useRef(new Animated.Value(0)).current;
   const labelFade = useRef(new Animated.Value(0)).current;
 
-  // Three dots that rise in sequence
   const dots = useRef([0, 1, 2].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    // Arc traces continuously — this is the "something is happening" signal
     Animated.loop(
       Animated.timing(arcSpin, {
         toValue: 1,
@@ -56,7 +45,6 @@ export default function LogoLoader({
       })
     ).start();
 
-    // Logo breathes
     Animated.loop(
       Animated.sequence([
         Animated.timing(breathe, {
@@ -74,7 +62,6 @@ export default function LogoLoader({
       ])
     ).start();
 
-    // Halo pushes outward on repeat
     Animated.loop(
       Animated.sequence([
         Animated.parallel([
@@ -97,7 +84,6 @@ export default function LogoLoader({
       ])
     ).start();
 
-    // Dots ripple left to right
     Animated.loop(
       Animated.stagger(
         150,
@@ -111,7 +97,6 @@ export default function LogoLoader({
       )
     ).start();
 
-    // Entrance
     Animated.parallel([
       Animated.spring(logoScale, {
         toValue: 1,
@@ -128,7 +113,6 @@ export default function LogoLoader({
       }),
     ]).start();
 
-    // Exit — only when the caller wants one
     if (onFinish) {
       const timer = setTimeout(() => {
         Animated.timing(rootFade, {
@@ -174,7 +158,7 @@ export default function LogoLoader({
           ]}
         >
           <Image
-            source={require("../assets/images/icon.png")}
+            source={require("../assets/images/hopon.logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -212,8 +196,6 @@ export default function LogoLoader({
   );
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
-
 const LOGO = 96;
 const RING = LOGO + 34;
 
@@ -222,7 +204,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     zIndex: 900,
     elevation: 900,
-    backgroundColor: GREEN.deep,
+    backgroundColor: brand.deep,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
@@ -232,12 +214,11 @@ const styles = StyleSheet.create({
     width: width * 1.3,
     height: width * 1.3,
     borderRadius: width * 0.65,
-    backgroundColor: GREEN.dark,
+    backgroundColor: brand.dark,
     opacity: 0.45,
     top: -width * 0.8,
     right: -width * 0.35,
   },
-
   cluster: {
     alignItems: "center",
     justifyContent: "center",
@@ -248,7 +229,7 @@ const styles = StyleSheet.create({
     height: RING + 30,
     borderRadius: 9999,
     borderWidth: 1,
-    borderColor: GREEN.accent,
+    borderColor: brand.accent,
   },
   track: {
     position: "absolute",
@@ -265,17 +246,17 @@ const styles = StyleSheet.create({
     borderRadius: 9999,
     borderWidth: 2,
     borderColor: "transparent",
-    borderTopColor: GREEN.mint,
-    borderRightColor: "rgba(31,181,116,0.4)",
+    borderTopColor: brand.mint,
+    borderRightColor: "rgba(157,78,221,0.4)",
   },
   card: {
     width: LOGO,
     height: LOGO,
     borderRadius: 28,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: GREEN.accent,
+    shadowColor: brand.accent,
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.42,
     shadowRadius: 26,
@@ -285,7 +266,6 @@ const styles = StyleSheet.create({
     width: LOGO * 0.64,
     height: LOGO * 0.64,
   },
-
   labelRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -309,6 +289,6 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: GREEN.mint,
+    backgroundColor: brand.mint,
   },
 });

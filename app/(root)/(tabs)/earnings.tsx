@@ -3,24 +3,23 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    Pressable,
-    RefreshControl,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState, StatCard } from "@/components/Cards";
 import CustomButton from "@/components/CustomButton";
+import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 
-// Money held back until a trip is confirmed complete. Stating the rule up
-// front prevents the commonest support question: "where is my money?"
 const CLEARING_HOURS = 24;
 const MIN_WITHDRAWAL = 50;
 
@@ -42,8 +41,8 @@ type Summary = {
 };
 
 const STATUS = {
-  pending: { bg: "bg-[#FDF4E3]", text: "text-[#8A6100]", label: "Processing" },
-  paid: { bg: "bg-[#E6F2EC]", text: "text-[#0E5C3F]", label: "Paid out" },
+  pending: { bg: "bg-[#FFF6E5]", text: "text-[#D99A1B]", label: "Processing" },
+  paid: { bg: "bg-[#F0E6FA]", text: "text-[#5A189A]", label: "Paid out" },
   failed: { bg: "bg-[#FEF3F3]", text: "text-[#B02A2A]", label: "Failed" },
 };
 
@@ -133,7 +132,7 @@ const Earnings = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
+    <SafeAreaView className="flex-1 bg-[#F7F4FB]">
       <ScrollView
         className="px-5"
         contentContainerStyle={{ paddingBottom: 130 }}
@@ -142,23 +141,23 @@ const Earnings = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#0E5C3F"
-            colors={["#0E5C3F"]}
+            tintColor="#5A189A"
+            colors={["#5A189A"]}
           />
         }
       >
-        <Text className="my-5 text-2xl font-JakartaExtraBold text-[#101814]">
+        <Text className="my-5 text-2xl font-JakartaExtraBold text-[#21152F]">
           Earnings
         </Text>
 
         {loading ? (
           <View className="items-center py-16">
-            <ActivityIndicator size="large" color="#0E5C3F" />
+            <ActivityIndicator size="large" color="#5A189A" />
           </View>
         ) : (
           <>
-            {/* ── Balance ── */}
-            <View className="overflow-hidden rounded-3xl bg-[#06231A] p-6">
+            {/* Balance Hero Card */}
+            <View className="overflow-hidden rounded-3xl bg-[#1D1135] p-6 shadow-xl shadow-black/20">
               <Text className="text-[11.5px] font-JakartaBold uppercase tracking-wider text-white/50">
                 Available to withdraw
               </Text>
@@ -168,7 +167,7 @@ const Earnings = () => {
 
               {(summary?.clearing ?? 0) > 0 && (
                 <View className="mt-2 flex-row items-center gap-1.5">
-                  <Ionicons name="time-outline" size={13} color="#6FEFB4" />
+                  <Ionicons name="time-outline" size={13} color="#C77DFF" />
                   <Text className="text-[12px] font-Jakarta text-white/60">
                     R{summary?.clearing.toFixed(2)} clearing — released{" "}
                     {CLEARING_HOURS} hours after each trip
@@ -179,7 +178,7 @@ const Earnings = () => {
               <Pressable
                 onPress={() => setSheetOpen(true)}
                 disabled={available < MIN_WITHDRAWAL}
-                className={`mt-5 h-[52px] flex-row items-center justify-center gap-2 rounded-2xl bg-[#1FB574] ${
+                className={`mt-5 h-[52px] flex-row items-center justify-center gap-2 rounded-2xl bg-[#5A189A] ${
                   available < MIN_WITHDRAWAL ? "opacity-40" : "active:opacity-85"
                 }`}
               >
@@ -196,8 +195,8 @@ const Earnings = () => {
               )}
             </View>
 
-            {/* ── This week ── */}
-            <Text className="mb-3 mt-6 text-[15px] font-JakartaExtraBold text-[#101814]">
+            {/* This week */}
+            <Text className="mb-3 mt-6 text-[15px] font-JakartaExtraBold text-[#21152F]">
               This week
             </Text>
             <View className="mb-2 flex-row gap-3">
@@ -218,35 +217,35 @@ const Earnings = () => {
               />
             </View>
 
-            {/* ── Bank account ── */}
-            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#101814]">
+            {/* Bank account */}
+            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#21152F]">
               Payout account
             </Text>
 
             <Pressable
               onPress={() => router.push("/(root)/bank-details")}
-              className="mb-2.5 flex-row items-center rounded-2xl border border-[#E2E9E5] bg-white px-4 py-4 active:opacity-80"
+              className="mb-2.5 flex-row items-center rounded-2xl border border-[#E9E2F0] bg-white px-4 py-4 active:opacity-80"
             >
-              <View className="h-10 w-10 items-center justify-center rounded-xl bg-[#E6F2EC]">
-                <Ionicons name="business-outline" size={18} color="#0E5C3F" />
+              <View className="h-10 w-10 items-center justify-center rounded-xl bg-[#F0E6FA]">
+                <Ionicons name="business-outline" size={18} color="#5A189A" />
               </View>
               <View className="ml-3 flex-1">
-                <Text className="text-[14px] font-JakartaSemiBold text-[#101814]">
+                <Text className="text-[14px] font-JakartaSemiBold text-[#21152F]">
                   {hasBank
                     ? `Account ending ${summary?.bank_account_last4}`
                     : "No bank account added"}
                 </Text>
-                <Text className="mt-0.5 text-[12px] font-Jakarta text-[#68756F]">
+                <Text className="mt-0.5 text-[12px] font-Jakarta text-[#746A7E]">
                   {hasBank
                     ? "Payouts are sent here"
                     : "Add one to receive your earnings"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#9BA6A1" />
+              <Ionicons name="chevron-forward" size={18} color="#A69BAF" />
             </Pressable>
 
-            {/* ── History ── */}
-            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#101814]">
+            {/* History */}
+            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#21152F]">
               Withdrawal history
             </Text>
 
@@ -262,17 +261,17 @@ const Earnings = () => {
                 return (
                   <View
                     key={payout.id}
-                    className="mb-2.5 flex-row items-center rounded-2xl border border-[#E2E9E5] bg-white px-4 py-3.5"
+                    className="mb-2.5 flex-row items-center rounded-2xl border border-[#E9E2F0] bg-white px-4 py-3.5"
                   >
-                    <View className="h-10 w-10 items-center justify-center rounded-xl bg-[#F5F8F6]">
-                      <Ionicons name="arrow-down" size={17} color="#0E5C3F" />
+                    <View className="h-10 w-10 items-center justify-center rounded-xl bg-[#F7F4FB]">
+                      <Ionicons name="arrow-down" size={17} color="#5A189A" />
                     </View>
 
                     <View className="ml-3 flex-1">
-                      <Text className="text-[15px] font-JakartaBold text-[#101814]">
+                      <Text className="text-[15px] font-JakartaBold text-[#21152F]">
                         R{Number(payout.amount).toFixed(2)}
                       </Text>
-                      <Text className="mt-0.5 text-[11.5px] font-Jakarta text-[#68756F]">
+                      <Text className="mt-0.5 text-[11.5px] font-Jakarta text-[#746A7E]">
                         {new Date(payout.created_at).toLocaleDateString("en-ZA", {
                           day: "numeric",
                           month: "short",
@@ -295,7 +294,7 @@ const Earnings = () => {
         )}
       </ScrollView>
 
-      {/* ── Withdraw sheet ── */}
+      {/* Withdraw sheet */}
       <Modal
         visible={sheetOpen}
         transparent
@@ -306,13 +305,13 @@ const Earnings = () => {
 
         <View className="rounded-t-3xl bg-white px-6 pb-9 pt-3">
           <View className="mb-5 items-center">
-            <View className="h-1 w-11 rounded-full bg-[#DFE6E2]" />
+            <View className="h-1 w-11 rounded-full bg-[#E9E2F0]" />
           </View>
 
-          <Text className="text-[20px] font-JakartaExtraBold text-[#101814]">
+          <Text className="text-[20px] font-JakartaExtraBold text-[#21152F]">
             Withdraw earnings
           </Text>
-          <Text className="mt-1 text-[13px] font-Jakarta text-[#68756F]">
+          <Text className="mt-1 text-[13px] font-Jakarta text-[#746A7E]">
             R{available.toFixed(2)} available
             {hasBank ? ` · account ending ${summary?.bank_account_last4}` : ""}
           </Text>
@@ -320,50 +319,50 @@ const Earnings = () => {
           <View
             className={`mt-5 flex-row items-center rounded-2xl border-[1.5px] px-4 ${
               amountError
-                ? "border-[#E04545] bg-[#FEF3F3]"
-                : "border-[#E2E9E5] bg-[#F8FAF9]"
+                ? "border-[#E0575B] bg-[#FEF3F3]"
+                : "border-[#E9E2F0] bg-[#F7F4FB]"
             }`}
           >
-            <Text className="text-[24px] font-JakartaExtraBold text-[#68756F]">R</Text>
+            <Text className="text-[24px] font-JakartaExtraBold text-[#746A7E]">R</Text>
             <TextInput
               value={amount}
               onChangeText={(v) => setAmount(v.replace(/[^0-9]/g, ""))}
               placeholder="0"
-              placeholderTextColor="#C9D2CD"
+              placeholderTextColor={ui.faint}
               keyboardType="number-pad"
               autoFocus
-              className="ml-2 h-[62px] flex-1 text-[24px] font-JakartaExtraBold text-[#101814]"
+              className="ml-2 h-[62px] flex-1 text-[24px] font-JakartaExtraBold text-[#21152F]"
             />
             <Pressable
               onPress={() => setAmount(String(Math.floor(available)))}
-              className="rounded-full bg-[#E6F2EC] px-3 py-1.5 active:opacity-70"
+              className="rounded-full bg-[#F0E6FA] px-3 py-1.5 active:opacity-70"
             >
-              <Text className="text-[12px] font-JakartaBold text-[#0E5C3F]">All</Text>
+              <Text className="text-[12px] font-JakartaBold text-[#5A189A]">All</Text>
             </Pressable>
           </View>
 
           {!!amountError && (
             <View className="mt-2 flex-row items-center gap-1.5">
-              <Ionicons name="alert-circle-outline" size={14} color="#E04545" />
-              <Text className="text-[12px] font-JakartaMedium text-[#E04545]">
+              <Ionicons name="alert-circle-outline" size={14} color="#E0575B" />
+              <Text className="text-[12px] font-JakartaMedium text-[#E0575B]">
                 {amountError}
               </Text>
             </View>
           )}
 
           {!hasBank && (
-            <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#FDF4E3] p-3.5">
-              <Ionicons name="warning-outline" size={15} color="#8A6100" />
-              <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#8A6100]">
+            <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#FFF6E5] p-3.5">
+              <Ionicons name="warning-outline" size={15} color="#D99A1B" />
+              <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#D99A1B]">
                 Add a bank account before withdrawing. You&apos;ll find it under
                 driver verification.
               </Text>
             </View>
           )}
 
-          <View className="mt-4 flex-row gap-2.5 rounded-2xl border border-[#E2E9E5] p-4">
-            <Ionicons name="time-outline" size={15} color="#0E5C3F" />
-            <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#68756F]">
+          <View className="mt-4 flex-row gap-2.5 rounded-2xl border border-[#E9E2F0] p-4">
+            <Ionicons name="time-outline" size={15} color="#5A189A" />
+            <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#746A7E]">
               Bank transfers take one to two working days. There is no fee for
               withdrawing.
             </Text>

@@ -3,21 +3,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    Pressable,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Pressable,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/Cards";
+import { brand, ui } from "@/constants/theme";
 import { useFetch } from "@/lib/fetch";
 import { Ride } from "@/types/type";
-
-// DRIVER APP — chat list. A thread only exists once a booking is accepted:
-// before that there's nobody to talk to, and after cancellation it closes.
 
 const Chat = () => {
   const { user } = useUser();
@@ -42,7 +40,7 @@ const Chat = () => {
   }, [data]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
+    <SafeAreaView className="flex-1 bg-[#F7F4FB]">
       <FlatList
         data={threads}
         keyExtractor={(item: any, i) => `${item.ride_id ?? i}`}
@@ -63,38 +61,38 @@ const Chat = () => {
                   params: { rideId: String(item.ride_id) },
                 })
               }
-              className="mb-3 flex-row items-center rounded-2xl border border-[#E2E9E5] bg-white p-4 active:opacity-80"
+              className="mb-3 flex-row items-center rounded-2xl border border-[#E9E2F0] bg-white p-4 active:opacity-80"
             >
               {item.passenger?.profile_image_url ? (
                 <Image
                   source={{ uri: item.passenger.profile_image_url }}
-                  className="h-12 w-12 rounded-full bg-[#EEF1F0]"
+                  className="h-12 w-12 rounded-full bg-[#F0E6FA]"
                 />
               ) : (
-                <View className="h-12 w-12 items-center justify-center rounded-full bg-[#E6F2EC]">
-                  <Ionicons name="person" size={20} color="#0E5C3F" />
+                <View className="h-12 w-12 items-center justify-center rounded-full bg-[#F0E6FA]">
+                  <Ionicons name="person" size={20} color="#5A189A" />
                 </View>
               )}
 
               <View className="ml-3 flex-1">
                 <View className="flex-row items-center gap-2">
                   <Text
-                    className="text-[14.5px] font-JakartaBold text-[#101814]"
+                    className="text-[14.5px] font-JakartaBold text-[#21152F]"
                     numberOfLines={1}
                   >
                     {name}
                   </Text>
-                  {active && <View className="h-2 w-2 rounded-full bg-[#1FB574]" />}
+                  {active && <View className="h-2 w-2 rounded-full bg-[#9D4EDD]" />}
                 </View>
                 <Text
-                  className="mt-0.5 text-[12px] font-Jakarta text-[#68756F]"
+                  className="mt-0.5 text-[12px] font-Jakarta text-[#746A7E]"
                   numberOfLines={1}
                 >
                   {item.destination_address}
                 </Text>
               </View>
 
-              <Ionicons name="chevron-forward" size={18} color="#9BA6A1" />
+              <Ionicons name="chevron-forward" size={18} color="#A69BAF" />
             </Pressable>
           );
         }}
@@ -103,11 +101,11 @@ const Chat = () => {
             <Pressable
               onPress={() => router.back()}
               hitSlop={8}
-              className="h-10 w-10 items-center justify-center rounded-xl border border-[#E2E9E5] bg-white active:opacity-70"
+              className="h-10 w-10 items-center justify-center rounded-xl border border-[#E9E2F0] bg-white active:opacity-70"
             >
-              <Ionicons name="chevron-back" size={20} color="#101814" />
+              <Ionicons name="chevron-back" size={20} color="#21152F" />
             </Pressable>
-            <Text className="text-2xl font-JakartaExtraBold text-[#101814]">
+            <Text className="text-2xl font-JakartaExtraBold text-[#21152F]">
               Messages
             </Text>
           </View>
@@ -115,7 +113,7 @@ const Chat = () => {
         ListEmptyComponent={
           loading ? (
             <View className="items-center py-12">
-              <ActivityIndicator size="large" color="#0E5C3F" />
+              <ActivityIndicator size="large" color="#5A189A" />
             </View>
           ) : (
             <EmptyState

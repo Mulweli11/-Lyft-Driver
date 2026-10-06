@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-const GREEN_DEEP = "#06231A";
+import { brand } from "@/constants/theme";
 
 const Layout = () => {
   return (
@@ -8,7 +8,7 @@ const Layout = () => {
       screenOptions={{
         headerShown: false,
         animation: "slide_from_right",
-        contentStyle: { backgroundColor: GREEN_DEEP },
+        contentStyle: { backgroundColor: brand.deep },
       }}
     >
       <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />

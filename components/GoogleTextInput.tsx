@@ -1,7 +1,8 @@
-import { View, Image, TextInput, Text, TouchableOpacity } from "react-native";
+import { Image, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { useState } from "react";
 
 import { icons } from "@/constants";
+import { ui } from "@/constants/theme";
 import { GoogleInputProps } from "@/types/type";
 
 const geoapifyKey = process.env.EXPO_PUBLIC_GEOAPIFY_API_KEY;
@@ -13,10 +14,8 @@ const GoogleTextInput = ({
   textInputBackgroundColor,
   handlePress,
 }: GoogleInputProps) => {
-
   const [text, setText] = useState("");
   const [places, setPlaces] = useState<any[]>([]);
-
 
   const searchPlaces = async (value: string) => {
     setText(value);
@@ -40,16 +39,13 @@ const GoogleTextInput = ({
       } else {
         setPlaces([]);
       }
-
     } catch (error) {
       console.log("Geoapify autocomplete error:", error);
       setPlaces([]);
     }
   };
 
-
   const handleSelectPlace = (place: any) => {
-
     const location = place.properties;
 
     handlePress({
@@ -62,23 +58,19 @@ const GoogleTextInput = ({
     setPlaces([]);
   };
 
-
   return (
     <View
-      className={`w-full rounded-3xl ${
+      className={`w-full rounded-2xl ${
         containerStyle ?? "bg-white"
-      } shadow-sm shadow-neutral-300`}
+      } border border-[#E9E2F0]`}
     >
-
       {/* Search Input */}
       <View
-        className="flex-row items-center rounded-3xl px-4"
+        className="flex-row items-center rounded-2xl px-4"
         style={{
-          backgroundColor:
-            textInputBackgroundColor ?? "#FFFFFF",
+          backgroundColor: textInputBackgroundColor ?? "#FFFFFF",
         }}
       >
-
         <View className="items-center justify-center">
           <Image
             source={icon ? icon : icons.search}
@@ -87,59 +79,36 @@ const GoogleTextInput = ({
           />
         </View>
 
-
         <TextInput
           value={text}
           onChangeText={searchPlaces}
-          placeholder={
-            initialLocation ?? "Where do you want to go?"
-          }
-          placeholderTextColor="#9CA3AF"
-          className="flex-1 h-[52px] ml-3 text-base font-semibold text-gray-900"
+          placeholder={initialLocation ?? "Where do you want to go?"}
+          placeholderTextColor={ui.faint}
+          className="flex-1 h-[52px] ml-3 text-[15px] font-JakartaSemiBold text-[#21152F]"
         />
-
       </View>
 
-
       {/* Autocomplete Results */}
-      {
-        places.length > 0 && (
-
-          <View
-            className="bg-white rounded-2xl mt-2 overflow-hidden"
-          >
-
-            {
-              places.map((place, index) => (
-
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => handleSelectPlace(place)}
-                  className="p-4 border-b border-gray-100"
-                >
-
-                  <Text
-                    className="text-gray-900 font-semibold"
-                    numberOfLines={2}
-                  >
-                    {place.properties.formatted}
-                  </Text>
-
-
-                </TouchableOpacity>
-
-              ))
-            }
-
-          </View>
-
-        )
-      }
-
-
+      {places.length > 0 && (
+        <View className="bg-white rounded-2xl mt-2 overflow-hidden border border-[#E9E2F0]">
+          {places.map((place, index) => (
+            <TouchableOpacity
+              key={index}
+              onPress={() => handleSelectPlace(place)}
+              className="p-4 border-b border-[#E9E2F0]"
+            >
+              <Text
+                className="text-[#21152F] font-JakartaSemiBold text-[14px]"
+                numberOfLines={2}
+              >
+                {place.properties.formatted}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 };
-
 
 export default GoogleTextInput;

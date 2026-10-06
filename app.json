@@ -4,7 +4,7 @@
     "slug": "lyft-driver",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/adaptive-icon.png",
+    "icon": "./assets/images/hopon.logo.png",
     "scheme": "lyft-driver",
     "userInterfaceStyle": "automatic",
 
@@ -17,8 +17,8 @@
 
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#06231A",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundColor": "#1D1135",
+        "foregroundImage": "./assets/images/hopon.apk.logo.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -33,7 +33,7 @@
 
     "web": {
       "output": "server",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/hopon.logo.png"
     },
 
     "plugins": [
@@ -42,6 +42,19 @@
       "expo-image",
       "expo-status-bar",
       "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/hopon.logo.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#1D1135",
+          "dark": {
+            "image": "./assets/images/hopon.logo.png",
+            "backgroundColor": "#1D1135"
+          }
+        }
+      ],
       "expo-secure-store",
       "expo-image-picker",
       [

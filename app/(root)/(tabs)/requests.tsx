@@ -2,17 +2,18 @@ import { useUser } from "@clerk/clerk-expo";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Pressable,
-    RefreshControl,
-    Text,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmptyState } from "@/components/Cards";
 import RequestCard from "@/components/RequestCard";
+import { brand, ui } from "@/constants/theme";
 import { useFetch } from "@/lib/fetch";
 import { Ride } from "@/types/type";
 
@@ -65,7 +66,7 @@ const Requests = () => {
   ];
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
+    <SafeAreaView className="flex-1 bg-[#F7F4FB]">
       <FlatList
         data={visible}
         keyExtractor={(item, index) =>
@@ -78,8 +79,8 @@ const Requests = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#0E5C3F"
-            colors={["#0E5C3F"]}
+            tintColor="#5A189A"
+            colors={["#5A189A"]}
           />
         }
         renderItem={({ item }) => (
@@ -87,11 +88,11 @@ const Requests = () => {
         )}
         ListHeaderComponent={
           <>
-            <Text className="my-5 text-2xl font-JakartaExtraBold text-[#101814]">
+            <Text className="my-5 text-2xl font-JakartaExtraBold text-[#21152F]">
               Bookings
             </Text>
 
-            <View className="mb-5 flex-row rounded-2xl bg-[#EEF1F0] p-1">
+            <View className="mb-5 flex-row rounded-2xl bg-[#F0E6FA] p-1">
               {TABS.map((item) => {
                 const active = tab === item.key;
                 return (
@@ -105,8 +106,8 @@ const Requests = () => {
                     <Text
                       className={`text-[13px] ${
                         active
-                          ? "font-JakartaBold text-[#0E5C3F]"
-                          : "font-JakartaMedium text-[#68756F]"
+                          ? "font-JakartaBold text-[#5A189A]"
+                          : "font-JakartaMedium text-[#746A7E]"
                       }`}
                     >
                       {item.label}
@@ -114,13 +115,11 @@ const Requests = () => {
                     {item.count > 0 && (
                       <View
                         className={`rounded-full px-1.5 py-0.5 ${
-                          // A waiting passenger is time-sensitive, so the New
-                          // count is red rather than neutral
                           item.key === "new"
-                            ? "bg-[#E04545]"
+                            ? "bg-[#E0575B]"
                             : active
-                              ? "bg-[#E6F2EC]"
-                              : "bg-[#DFE6E2]"
+                              ? "bg-[#F0E6FA]"
+                              : "bg-[#E9E2F0]"
                         }`}
                       >
                         <Text
@@ -128,8 +127,8 @@ const Requests = () => {
                             item.key === "new"
                               ? "text-white"
                               : active
-                                ? "text-[#0E5C3F]"
-                                : "text-[#68756F]"
+                                ? "text-[#5A189A]"
+                                : "text-[#746A7E]"
                           }`}
                         >
                           {item.count}
@@ -142,7 +141,7 @@ const Requests = () => {
             </View>
 
             {tab === "new" && groups.new.length > 0 && (
-              <Text className="mb-3 text-[12px] font-Jakarta leading-4 text-[#9BA6A1]">
+              <Text className="mb-3 text-[12px] font-Jakarta leading-4 text-[#A69BAF]">
                 Passengers have paid and are waiting for you to accept. Replying
                 quickly improves your rating.
               </Text>
@@ -152,7 +151,7 @@ const Requests = () => {
         ListEmptyComponent={
           loading ? (
             <View className="items-center py-12">
-              <ActivityIndicator size="large" color="#0E5C3F" />
+              <ActivityIndicator size="large" color="#5A189A" />
             </View>
           ) : error ? (
             <EmptyState

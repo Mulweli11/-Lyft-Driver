@@ -3,27 +3,27 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Linking,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SectionCard, StatCard } from "@/components/Cards";
+import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 import {
-    PickedImage,
-    captureImage,
-    pickFromLibrary,
-    uploadAvatar,
+  PickedImage,
+  captureImage,
+  pickFromLibrary,
+  uploadAvatar,
 } from "@/lib/verification";
 
-// Replace with your real support details
 const SUPPORT_EMAIL = "drivers@lyftcarpool.co.za";
 const SUPPORT_WHATSAPP = "27110000000";
 
@@ -113,36 +113,36 @@ const Profile = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-[#F5F8F6]">
+    <SafeAreaView className="flex-1 bg-[#F7F4FB]">
       <ScrollView
         className="px-5"
         contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text className="my-5 text-2xl font-JakartaExtraBold text-[#101814]">
+        <Text className="my-5 text-2xl font-JakartaExtraBold text-[#21152F]">
           Profile
         </Text>
 
         {loading ? (
           <View className="items-center py-16">
-            <ActivityIndicator size="large" color="#0E5C3F" />
+            <ActivityIndicator size="large" color="#5A189A" />
           </View>
         ) : (
           <>
             {/* Identity */}
-            <View className="items-center rounded-3xl border border-[#E2E9E5] bg-white px-5 py-6">
+            <View className="items-center rounded-3xl border border-[#E9E2F0] bg-white px-5 py-6 shadow-sm">
               <Pressable onPress={changePhoto} className="relative active:opacity-80">
                 {profile?.profile_image_url ? (
                   <Image
                     source={{ uri: profile.profile_image_url }}
-                    className="h-24 w-24 rounded-full bg-[#EEF1F0]"
+                    className="h-24 w-24 rounded-full bg-[#F0E6FA]"
                   />
                 ) : (
-                  <View className="h-24 w-24 items-center justify-center rounded-full bg-[#E6F2EC]">
-                    <Ionicons name="person" size={38} color="#0E5C3F" />
+                  <View className="h-24 w-24 items-center justify-center rounded-full bg-[#F0E6FA]">
+                    <Ionicons name="person" size={38} color="#5A189A" />
                   </View>
                 )}
-                <View className="absolute -bottom-1 -right-1 h-8 w-8 items-center justify-center rounded-full border-[3px] border-white bg-[#0E5C3F]">
+                <View className="absolute -bottom-1 -right-1 h-8 w-8 items-center justify-center rounded-full border-[3px] border-white bg-[#5A189A]">
                   {saving ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
@@ -151,23 +151,23 @@ const Profile = () => {
                 </View>
               </Pressable>
 
-              <Text className="mt-4 text-[19px] font-JakartaExtraBold text-[#101814]">
+              <Text className="mt-4 text-[19px] font-JakartaExtraBold text-[#21152F]">
                 {profile?.name ?? user?.fullName ?? "Driver"}
               </Text>
 
               <View
                 className={`mt-2 flex-row items-center gap-1.5 rounded-full px-3 py-1.5 ${
-                  approved ? "bg-[#E6F2EC]" : "bg-[#FDF4E3]"
+                  approved ? "bg-[#F0E6FA]" : "bg-[#FFF6E5]"
                 }`}
               >
                 <Ionicons
                   name={approved ? "shield-checkmark" : "time-outline"}
                   size={12}
-                  color={approved ? "#0E5C3F" : "#8A6100"}
+                  color={approved ? "#5A189A" : "#D99A1B"}
                 />
                 <Text
                   className={`text-[11.5px] font-JakartaBold ${
-                    approved ? "text-[#0E5C3F]" : "text-[#8A6100]"
+                    approved ? "text-[#5A189A]" : "text-[#D99A1B]"
                   }`}
                 >
                   {approved
@@ -199,7 +199,7 @@ const Profile = () => {
             </View>
 
             {/* Vehicle */}
-            <Text className="mb-3 mt-6 text-[15px] font-JakartaExtraBold text-[#101814]">
+            <Text className="mb-3 mt-6 text-[15px] font-JakartaExtraBold text-[#21152F]">
               My vehicle
             </Text>
             <SectionCard
@@ -216,7 +216,7 @@ const Profile = () => {
             />
 
             {/* Driving */}
-            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#101814]">
+            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#21152F]">
               Driving
             </Text>
             <View className="mb-1">
@@ -275,7 +275,7 @@ const Profile = () => {
             </View>
 
             {/* Account */}
-            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#101814]">
+            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#21152F]">
               Account
             </Text>
             <View className="mb-1">
@@ -317,7 +317,7 @@ const Profile = () => {
             </View>
 
             {/* Support */}
-            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#101814]">
+            <Text className="mb-3 mt-5 text-[15px] font-JakartaExtraBold text-[#21152F]">
               Support
             </Text>
             <View className="mb-5">

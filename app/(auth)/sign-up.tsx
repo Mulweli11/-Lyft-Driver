@@ -3,41 +3,27 @@ import { Ionicons } from "@expo/vector-icons";
 import { Link, router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    Easing,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Animated,
+  Dimensions,
+  Easing,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { ReactNativeModal } from "react-native-modal";
 
 import OAuth from "@/components/OAuth";
+import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 
 const { width } = Dimensions.get("window");
-
-// ─── Palette ─────────────────────────────────────────────────────────────────
-const GREEN = {
-  deep:   "#06231A",
-  dark:   "#0E5C3F",
-  mid:    "#12724F",
-  accent: "#1FB574",
-  mint:   "#6FEFB4",
-  tint:   "#E6F2EC",
-};
-
-const INK    = "#101814";
-const MUTED  = "#68756F";
-const BORDER = "#E2E9E5";
-const DANGER = "#E04545";
 
 // ─── Field ───────────────────────────────────────────────────────────────────
 
@@ -68,12 +54,12 @@ function Field({ label, icon, error, secure, hint, ...props }: FieldProps) {
         <Ionicons
           name={icon}
           size={19}
-          color={error ? DANGER : focused ? GREEN.dark : "#A7B2AD"}
+          color={error ? ui.danger : focused ? brand.dark : ui.faint}
         />
 
         <TextInput
           style={styles.fieldInput}
-          placeholderTextColor="#B4BEB9"
+          placeholderTextColor={ui.faint}
           autoCapitalize="none"
           secureTextEntry={hidden}
           onFocus={() => setFocused(true)}
@@ -82,11 +68,14 @@ function Field({ label, icon, error, secure, hint, ...props }: FieldProps) {
         />
 
         {secure && (
-          <TouchableOpacity onPress={() => setHidden((h) => !h)} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={() => setHidden((h) => !h)}
+            activeOpacity={0.7}
+          >
             <Ionicons
               name={hidden ? "eye-outline" : "eye-off-outline"}
               size={19}
-              color="#A7B2AD"
+              color={ui.muted}
             />
           </TouchableOpacity>
         )}
@@ -120,12 +109,16 @@ const SignUp = () => {
   });
 
   // ── Animations ─────────────────────────────────────────────────────────────
-  const headerFade  = useRef(new Animated.Value(0)).current;
+  const headerFade = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-18)).current;
-  const cardFade    = useRef(new Animated.Value(0)).current;
-  const cardSlide   = useRef(new Animated.Value(34)).current;
-  const footerFade  = useRef(new Animated.Value(0)).current;
-  const ringSpin    = useRef(new Animated.Value(0)).current;
+  const cardFade = useRef(new Animated.Value(0)).current;
+  const cardSlide = useRef(new Animated.Value(34)).current;
+  const footerFade = useRef(new Animated.Value(0)).current;
+  const ringSpin = useRef(new Animated.Value(0)).current;
+
+  // Badge float & glow
+  const badgeBob = useRef(new Animated.Value(0)).current;
+  const badgeGlow = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.loop(
@@ -137,9 +130,47 @@ const SignUp = () => {
       })
     ).start();
 
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(badgeBob, {
+          toValue: 1,
+          duration: 2400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(badgeBob, {
+          toValue: 0,
+          duration: 2400,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(badgeGlow, {
+          toValue: 1.15,
+          duration: 2600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(badgeGlow, {
+          toValue: 1,
+          duration: 2600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(headerFade, { toValue: 1, duration: 460, useNativeDriver: true }),
+        Animated.timing(headerFade, {
+          toValue: 1,
+          duration: 460,
+          useNativeDriver: true,
+        }),
         Animated.spring(headerSlide, {
           toValue: 0,
           tension: 68,
@@ -148,7 +179,11 @@ const SignUp = () => {
         }),
       ]),
       Animated.parallel([
-        Animated.timing(cardFade, { toValue: 1, duration: 420, useNativeDriver: true }),
+        Animated.timing(cardFade, {
+          toValue: 1,
+          duration: 420,
+          useNativeDriver: true,
+        }),
         Animated.spring(cardSlide, {
           toValue: 0,
           tension: 66,
@@ -156,7 +191,11 @@ const SignUp = () => {
           useNativeDriver: true,
         }),
       ]),
-      Animated.timing(footerFade, { toValue: 1, duration: 360, useNativeDriver: true }),
+      Animated.timing(footerFade, {
+        toValue: 1,
+        duration: 360,
+        useNativeDriver: true,
+      }),
     ]).start();
   }, []);
 
@@ -165,7 +204,12 @@ const SignUp = () => {
     outputRange: ["0deg", "360deg"],
   });
 
-  // ── Clerk sign-up — unchanged ──────────────────────────────────────────────
+  const badgeY = badgeBob.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -6],
+  });
+
+  // ── Clerk sign-up — logic preserved ──────────────────────────────────────
   const onSignUpPress = async () => {
     if (!isLoaded) return;
     setLoading(true);
@@ -265,7 +309,7 @@ const SignUp = () => {
       style={styles.root}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <StatusBar barStyle="light-content" backgroundColor={GREEN.deep} />
+      <StatusBar barStyle="light-content" backgroundColor={brand.deep} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -277,7 +321,9 @@ const SignUp = () => {
         <View style={styles.header}>
           <View style={styles.blobA} />
           <View style={styles.blobB} />
-          <Animated.View style={[styles.orbitRing, { transform: [{ rotate: spin }] }]} />
+          <Animated.View
+            style={[styles.orbitRing, { transform: [{ rotate: spin }] }]}
+          />
 
           <Animated.View
             style={[
@@ -293,12 +339,27 @@ const SignUp = () => {
               <Ionicons name="chevron-back" size={21} color="rgba(255,255,255,0.9)" />
             </TouchableOpacity>
 
-            <View style={styles.logoBadge}>
-              <Ionicons name="person-add" size={28} color={GREEN.dark} />
-            </View>
+            <Animated.View
+              style={[
+                styles.logoBadgeWrap,
+                { transform: [{ translateY: badgeY }] },
+              ]}
+            >
+              <Animated.View
+                style={[
+                  styles.logoBadgeGlow,
+                  { transform: [{ scale: badgeGlow }] },
+                ]}
+              />
+              <View style={styles.logoBadge}>
+                <Ionicons name="person-add" size={28} color={brand.dark} />
+              </View>
+            </Animated.View>
 
             <Text style={styles.headerTitle}>Create your account</Text>
-            <Text style={styles.headerSub}>Start sharing rides in under a minute</Text>
+            <Text style={styles.headerSub}>
+              Start sharing rides in under a minute
+            </Text>
           </Animated.View>
         </View>
 
@@ -336,7 +397,9 @@ const SignUp = () => {
             secure
             textContentType="password"
             value={form.password}
-            onChangeText={(value: string) => setForm({ ...form, password: value })}
+            onChangeText={(value: string) =>
+              setForm({ ...form, password: value })
+            }
           />
 
           <TouchableOpacity
@@ -348,7 +411,11 @@ const SignUp = () => {
             <Text style={styles.ctaText}>
               {loading ? "Creating account…" : "Create account"}
             </Text>
-            {!loading && <Ionicons name="arrow-forward" size={19} color="#fff" />}
+            {!loading && (
+              <View style={styles.ctaIconBadge}>
+                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              </View>
+            )}
           </TouchableOpacity>
 
           <View style={styles.dividerRow}>
@@ -363,8 +430,14 @@ const SignUp = () => {
         {/* ── Footer ── */}
         <Animated.View style={[styles.footer, { opacity: footerFade }]}>
           <View style={styles.trustRow}>
-            <Ionicons name="lock-closed-outline" size={15} color={GREEN.dark} />
-            <Text style={styles.trustText}>Your details stay private and encrypted</Text>
+            <Ionicons
+              name="lock-closed-outline"
+              size={15}
+              color={brand.dark}
+            />
+            <Text style={styles.trustText}>
+              Your details stay private and encrypted
+            </Text>
           </View>
 
           <Link href="/sign-in" style={styles.signinLink}>
@@ -387,7 +460,7 @@ const SignUp = () => {
           <View style={styles.modalIconWrap}>
             <View style={styles.modalIconRing} />
             <View style={styles.modalIcon}>
-              <Ionicons name="mail-open-outline" size={30} color={GREEN.dark} />
+              <Ionicons name="mail-open-outline" size={30} color={brand.dark} />
             </View>
           </View>
 
@@ -400,7 +473,7 @@ const SignUp = () => {
           <TextInput
             style={styles.codeInput}
             placeholder="000000"
-            placeholderTextColor="#C9D2CD"
+            placeholderTextColor={ui.faint}
             keyboardType="number-pad"
             maxLength={6}
             value={verification.code}
@@ -415,13 +488,17 @@ const SignUp = () => {
 
           {verification.error !== "" && (
             <View style={styles.modalErrorRow}>
-              <Ionicons name="alert-circle-outline" size={15} color={DANGER} />
+              <Ionicons name="alert-circle-outline" size={15} color={ui.danger} />
               <Text style={styles.modalErrorText}>{verification.error}</Text>
             </View>
           )}
 
           <TouchableOpacity
-            style={[styles.cta, styles.modalCta, verifying && { opacity: 0.72 }]}
+            style={[
+              styles.cta,
+              styles.modalCta,
+              verifying && { opacity: 0.72 },
+            ]}
             onPress={onPressVerify}
             activeOpacity={0.88}
             disabled={verifying}
@@ -429,11 +506,12 @@ const SignUp = () => {
             <Text style={styles.ctaText}>
               {verifying ? "Verifying…" : "Verify email"}
             </Text>
-            {!verifying && <Ionicons name="checkmark" size={19} color="#fff" />}
+            {!verifying && <Ionicons name="checkmark" size={19} color="#FFFFFF" />}
           </TouchableOpacity>
 
           <Text style={styles.modalNote}>
-            The code expires shortly. Check your spam folder if it hasn&apos;t arrived.
+            The code expires shortly. Check your spam folder if it hasn&apos;t
+            arrived.
           </Text>
         </View>
       </ReactNativeModal>
@@ -445,7 +523,7 @@ const SignUp = () => {
             <View style={styles.successRingOuter} />
             <View style={styles.successRingInner} />
             <View style={styles.successIcon}>
-              <Ionicons name="checkmark" size={38} color="#fff" />
+              <Ionicons name="checkmark" size={38} color="#FFFFFF" />
             </View>
           </View>
 
@@ -460,7 +538,7 @@ const SignUp = () => {
             activeOpacity={0.88}
           >
             <Text style={styles.ctaText}>Browse rides</Text>
-            <Ionicons name="arrow-forward" size={19} color="#fff" />
+            <Ionicons name="arrow-forward" size={19} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </ReactNativeModal>
@@ -475,7 +553,7 @@ export default SignUp;
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#F5F8F6",
+    backgroundColor: ui.bg,
   },
   scroll: {
     paddingBottom: 40,
@@ -484,7 +562,7 @@ const styles = StyleSheet.create({
   // Header
   header: {
     height: 292,
-    backgroundColor: GREEN.deep,
+    backgroundColor: brand.deep,
     borderBottomLeftRadius: 38,
     borderBottomRightRadius: 38,
     overflow: "hidden",
@@ -494,7 +572,7 @@ const styles = StyleSheet.create({
     width: width * 1.2,
     height: width * 1.2,
     borderRadius: width * 0.6,
-    backgroundColor: GREEN.dark,
+    backgroundColor: brand.dark,
     opacity: 0.5,
     top: -width * 0.72,
     left: -width * 0.3,
@@ -504,7 +582,7 @@ const styles = StyleSheet.create({
     width: width * 0.8,
     height: width * 0.8,
     borderRadius: width * 0.4,
-    backgroundColor: GREEN.mid,
+    backgroundColor: brand.mid,
     opacity: 0.2,
     bottom: -width * 0.5,
     right: -width * 0.3,
@@ -516,8 +594,8 @@ const styles = StyleSheet.create({
     borderRadius: 125,
     borderWidth: 1.5,
     borderColor: "transparent",
-    borderTopColor: "rgba(111,239,180,0.4)",
-    borderRightColor: "rgba(31,181,116,0.15)",
+    borderTopColor: "rgba(199,125,255,0.4)",
+    borderRightColor: "rgba(157,78,221,0.15)",
     alignSelf: "center",
     top: 58,
   },
@@ -538,16 +616,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  logoBadgeWrap: {
+    marginTop: 6,
+    marginBottom: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoBadgeGlow: {
+    position: "absolute",
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: brand.tint,
+    opacity: 0.85,
+  },
   logoBadge: {
     width: 72,
     height: 72,
     borderRadius: 24,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 6,
-    marginBottom: 18,
-    shadowColor: GREEN.accent,
+    shadowColor: brand.accent,
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.4,
     shadowRadius: 22,
@@ -556,7 +646,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 25,
     fontFamily: "Jakarta-ExtraBold",
-    color: "#fff",
+    color: "#FFFFFF",
     letterSpacing: -0.6,
     marginBottom: 6,
     textAlign: "center",
@@ -570,7 +660,7 @@ const styles = StyleSheet.create({
 
   // Card
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     marginHorizontal: 20,
     marginTop: -34,
     borderRadius: 26,
@@ -589,7 +679,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 12.5,
     fontFamily: "Jakarta-SemiBold",
-    color: "#4A5450",
+    color: ui.ink,
     marginBottom: 8,
   },
   fieldBox: {
@@ -600,34 +690,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: BORDER,
+    borderColor: ui.border,
     backgroundColor: "#F8FAF9",
   },
   fieldBoxFocused: {
-    borderColor: GREEN.dark,
-    backgroundColor: "#fff",
+    borderColor: brand.accent,
+    backgroundColor: "#FFFFFF",
   },
   fieldBoxError: {
-    borderColor: DANGER,
-    backgroundColor: "#FEF3F3",
+    borderColor: ui.danger,
+    backgroundColor: ui.dangerBg,
   },
   fieldInput: {
     flex: 1,
     fontSize: 15,
     fontFamily: "Jakarta",
-    color: INK,
+    color: ui.ink,
   },
   fieldError: {
     fontSize: 12,
     fontFamily: "Jakarta-Medium",
-    color: DANGER,
+    color: ui.danger,
     marginTop: 6,
     marginLeft: 4,
   },
   fieldHint: {
     fontSize: 11.5,
     fontFamily: "Jakarta",
-    color: "#9BA6A1",
+    color: ui.faint,
     marginTop: 6,
     marginLeft: 4,
   },
@@ -636,23 +726,31 @@ const styles = StyleSheet.create({
   cta: {
     height: 56,
     borderRadius: 17,
-    backgroundColor: GREEN.dark,
+    backgroundColor: brand.dark,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
     marginTop: 6,
-    shadowColor: GREEN.dark,
+    shadowColor: brand.dark,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 14,
     elevation: 7,
   },
   ctaText: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 16,
     fontFamily: "Jakarta-Bold",
     letterSpacing: 0.2,
+  },
+  ctaIconBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // Divider
@@ -666,12 +764,12 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: BORDER,
+    backgroundColor: ui.border,
   },
   dividerText: {
     fontSize: 11.5,
     fontFamily: "Jakarta-Medium",
-    color: "#9BA6A1",
+    color: ui.faint,
   },
 
   // Footer
@@ -685,7 +783,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    backgroundColor: GREEN.tint,
+    backgroundColor: brand.tint,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 999,
@@ -693,7 +791,7 @@ const styles = StyleSheet.create({
   trustText: {
     fontSize: 12,
     fontFamily: "Jakarta-Medium",
-    color: GREEN.dark,
+    color: brand.dark,
   },
   signinLink: {
     textAlign: "center",
@@ -701,17 +799,17 @@ const styles = StyleSheet.create({
   signinLabel: {
     fontSize: 14,
     fontFamily: "Jakarta",
-    color: MUTED,
+    color: ui.muted,
   },
   signinAction: {
     fontSize: 14,
     fontFamily: "Jakarta-Bold",
-    color: GREEN.dark,
+    color: brand.dark,
   },
 
   // Modals
   modal: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 28,
     paddingHorizontal: 26,
     paddingTop: 30,
@@ -728,22 +826,22 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: GREEN.tint,
+    backgroundColor: brand.tint,
   },
   modalIcon: {
     width: 68,
     height: 68,
     borderRadius: 24,
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: GREEN.tint,
+    borderColor: brand.tint,
   },
   modalTitle: {
     fontSize: 22,
     fontFamily: "Jakarta-ExtraBold",
-    color: INK,
+    color: ui.ink,
     letterSpacing: -0.5,
     marginBottom: 8,
     textAlign: "center",
@@ -752,25 +850,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     fontFamily: "Jakarta",
-    color: MUTED,
+    color: ui.muted,
     textAlign: "center",
     marginBottom: 22,
   },
   modalEmail: {
     fontFamily: "Jakarta-Bold",
-    color: INK,
+    color: ui.ink,
   },
   codeInput: {
     width: "100%",
     height: 62,
     borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: BORDER,
+    borderColor: ui.border,
     backgroundColor: "#F8FAF9",
     textAlign: "center",
     fontSize: 26,
     fontFamily: "Jakarta-ExtraBold",
-    color: INK,
+    color: ui.ink,
     letterSpacing: 10,
   },
   modalErrorRow: {
@@ -782,7 +880,7 @@ const styles = StyleSheet.create({
   modalErrorText: {
     fontSize: 12.5,
     fontFamily: "Jakarta-Medium",
-    color: DANGER,
+    color: ui.danger,
     flexShrink: 1,
   },
   modalCta: {
@@ -793,12 +891,12 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     lineHeight: 17,
     fontFamily: "Jakarta",
-    color: "#9BA6A1",
+    color: ui.faint,
     textAlign: "center",
     marginTop: 16,
   },
 
-  // Success
+  // Success Modal
   successIconWrap: {
     alignItems: "center",
     justifyContent: "center",
@@ -810,22 +908,22 @@ const styles = StyleSheet.create({
     width: 118,
     height: 118,
     borderRadius: 59,
-    backgroundColor: GREEN.accent,
-    opacity: 0.1,
+    backgroundColor: brand.accent,
+    opacity: 0.15,
   },
   successRingInner: {
     position: "absolute",
     width: 92,
     height: 92,
     borderRadius: 46,
-    backgroundColor: GREEN.accent,
-    opacity: 0.18,
+    backgroundColor: brand.accent,
+    opacity: 0.25,
   },
   successIcon: {
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: GREEN.dark,
+    backgroundColor: brand.dark,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -1,11 +1,14 @@
-import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Easing,
+  FlatList,
   Image,
+  ListRenderItemInfo,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   StatusBar,
   StyleSheet,
   Text,
@@ -14,269 +17,431 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// ==========================================
-// DESIGN SYSTEM & CONSTANTS
-// ==========================================
-const { width } = Dimensions.get("window");
+import hopOnLogo from "@/assets/images/hopon.logo.png";
+import { icons, onboarding } from "@/constants";
 
-const COLORS = {
-  deep: "#06231A",
-  dark: "#00873d",
-  mid: "#12724F",
-  accent: "#1FB574",
-  mint: "#E1F5E8",
-  soft: "#F2F4F2",
-  textDark: "#121417",
-  textMuted: "#67707e",
-  white: "#FFFFFF",
-};
+const { width, height } = Dimensions.get("window");
 
-// ==========================================
-// SUB-COMPONENTS
-// ==========================================
-
-// Line-art style illustration matching UI
-const IllustrationSVG = () => (
-  <View style={styles.heroIllustration}>
-    <View style={styles.lineOne} />
-    <View style={styles.lineTwo} />
-    <View style={styles.plantGroup}>
-      <View style={styles.plantStem} />
-      <View style={styles.plantLeaf} />
-    </View>
-    <View style={styles.vehicleWrap}>
-      <View style={styles.vehicleRoof} />
-      <View style={styles.vehicleBody} />
-      <View style={styles.wheelLeft} />
-      <View style={styles.wheelRight} />
-    </View>
-    <View style={styles.sunBurst} />
-  </View>
-);
-
-// Hero Header Card
-const HeroCard = ({ anim }: { anim: Animated.Value }) => {
-  const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [80, 0] });
-  const opacity = anim;
-
-  return (
-    <Animated.View style={{ opacity, transform: [{ translateX }] }}>
-      <View style={styles.heroCard}>
-        <TouchableOpacity style={styles.expandButton} activeOpacity={0.7}>
-          <Ionicons name="expand-outline" size={12} color={COLORS.textDark} />
-        </TouchableOpacity>
-        <IllustrationSVG />
-      </View>
-    </Animated.View>
-  );
-};
-
-// Reusable Small Dashboard Card
-interface StatCardProps {
+export interface OnboardingItem {
+  id: string | number;
   title: string;
-  subtitle: string;
-  iconName: keyof typeof Ionicons.glyphMap;
-  anim: Animated.Value;
-  direction?: "left" | "up" | "right";
+  description: string;
+  image?: any;
 }
 
-const StatCard = ({ title, subtitle, iconName, anim, direction = "up" }: StatCardProps) => {
-  const getTransform = () => {
-    if (direction === "left") {
-      return [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [-40, 0] }) }];
-    }
-    if (direction === "right") {
-      return [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }];
-    }
-    return [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [35, 0] }) }];
-  };
+interface SlideProps {
+  item: OnboardingItem;
+  index: number;
+  scrollX: Animated.Value;
+}
 
-  return (
-    <Animated.View
-      style={[
-        styles.gridItem,
-        {
-          opacity: anim,
-          transform: [...getTransform(), { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }],
-        },
-      ]}
-    >
-      <View style={styles.card}>
-        <View>
-          <Text style={styles.cardTitle}>{title}</Text>
-          <Text style={styles.cardSubtitle}>{subtitle}</Text>
-        </View>
-        <Ionicons name={iconName} size={22} color={COLORS.dark} />
-      </View>
-    </Animated.View>
-  );
-};
+const PALETTE = {
+  bg: "#151128",
+  purplePrimary: "#8A3FFC",
+  purpleGlow: "#A855F7",
+  cardBg: "#1C1733",
+  white: "#FFFFFF",
+  textMuted: "#9CA3AF",
+  circleRing1: "rgba(138, 63, 252, 0.2)",
+  circleRing2: "rgba(138, 63, 252, 0.4)",
+  circleRing3: "rgba(138, 63, 252, 0.8)",
+  closeBtnBg: "rgba(255, 255, 255, 0.12)",
+} as const;
 
-// Animated Consumer Trend Banner Card
-const TrendCard = ({ anim }: { anim: Animated.Value }) => {
-  const [value, setValue] = useState(15);
-  const counterScale = useRef(new Animated.Value(1)).current;
+function Slide({ item, index, scrollX }: SlideProps) {
+  const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+
+  const imageTranslate = scrollX.interpolate({
+    inputRange,
+    outputRange: [width * 0.35, 0, -width * 0.35],
+    extrapolate: "clamp",
+  });
+  const imageScale = scrollX.interpolate({
+    inputRange,
+    outputRange: [0.82, 1, 0.82],
+    extrapolate: "clamp",
+  });
+  const imageOpacity = scrollX.interpolate({
+    inputRange,
+    outputRange: [0, 1, 0],
+    extrapolate: "clamp",
+  });
+
+  const imageRotate = scrollX.interpolate({
+    inputRange,
+    outputRange: ["-6deg", "0deg", "6deg"],
+    extrapolate: "clamp",
+  });
+
+  const bob = useRef(new Animated.Value(0)).current;
+  const spinRing = useRef(new Animated.Value(0)).current;
+  const spinInner = useRef(new Animated.Value(0)).current;
+  const halo = useRef(new Animated.Value(1)).current;
+  const pop = useRef(new Animated.Value(0.9)).current;
+
+  const orb1 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Percentage flip from 15% -> 17% with bounce
-    const timer = setTimeout(() => {
-      setValue(16);
+    Animated.loop(
       Animated.sequence([
-        Animated.timing(counterScale, { toValue: 1.1, duration: 150, useNativeDriver: true }),
-        Animated.timing(counterScale, { toValue: 1, duration: 150, useNativeDriver: true }),
-      ]).start();
+        Animated.timing(bob, {
+          toValue: 1,
+          duration: 2600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bob, {
+          toValue: 0,
+          duration: 2600,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
 
-      setTimeout(() => {
-        setValue(17);
+    Animated.loop(
+      Animated.timing(spinRing, {
+        toValue: 1,
+        duration: 28000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.timing(spinInner, {
+        toValue: 1,
+        duration: 18000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(halo, {
+          toValue: 1.15,
+          duration: 2800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(halo, {
+          toValue: 1,
+          duration: 2800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    const drift = (v: Animated.Value, dur: number) =>
+      Animated.loop(
         Animated.sequence([
-          Animated.timing(counterScale, { toValue: 1.12, duration: 150, useNativeDriver: true }),
-          Animated.timing(counterScale, { toValue: 1, duration: 150, useNativeDriver: true }),
-        ]).start();
-      }, 200);
-    }, 1400);
+          Animated.timing(v, {
+            toValue: 1,
+            duration: dur,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(v, {
+            toValue: 0,
+            duration: dur,
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
 
-    return () => clearTimeout(timer);
+    drift(orb1, 3200);
   }, []);
 
-  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [40, 0] });
+  useEffect(() => {
+    pop.setValue(0.9);
+    Animated.spring(pop, {
+      toValue: 1,
+      tension: 70,
+      friction: 8,
+      useNativeDriver: true,
+    }).start();
+  }, [index]);
+
+  const bobY = bob.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -10],
+  });
+
+  const ringRotate = spinRing.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  const innerRotate = spinInner.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["360deg", "0deg"],
+  });
+
+  const orb1Y = orb1.interpolate({ inputRange: [0, 1], outputRange: [0, -18] });
+  const orb1X = orb1.interpolate({ inputRange: [0, 1], outputRange: [0, 8] });
 
   return (
-    <Animated.View
-      style={{
-        opacity: anim,
-        transform: [{ translateY }, { scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }],
-      }}
-    >
-      <View style={styles.trendCard}>
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>Consumer Trend</Text>
-        </View>
-        <Animated.Text style={[styles.statNumber, { transform: [{ scale: counterScale }] }]}>
-          {value}%
-        </Animated.Text>
-        <Text style={styles.statLabel}>Compound annual growth rate</Text>
-      </View>
-    </Animated.View>
-  );
-};
+    <View style={[styles.slide, { width }]}>
+      <Animated.View
+        style={{
+          opacity: imageOpacity,
+          transform: [
+            { translateX: imageTranslate },
+            { scale: imageScale },
+            { rotate: imageRotate },
+          ],
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.artwork,
+            { transform: [{ translateY: bobY }, { scale: pop }] },
+          ]}
+        >
+          <Animated.View
+            style={[styles.halo, { transform: [{ scale: halo }] }]}
+          />
 
-// ==========================================
-// MAIN SCREEN COMPONENT
-// ==========================================
-const Welcome = () => {
-  // Entrance Animation Sequence Values
-  const heroAnim = useRef(new Animated.Value(0)).current;
-  const leftAnim = useRef(new Animated.Value(0)).current;
-  const rightAnim = useRef(new Animated.Value(0)).current;
-  const trendAnim = useRef(new Animated.Value(0)).current;
-  const bottomAnim = useRef(new Animated.Value(0)).current;
+          <Animated.View
+            style={[styles.outerRing, { transform: [{ rotate: ringRotate }] }]}
+          />
+          <Animated.View
+            style={[
+              styles.middleRing,
+              { transform: [{ rotate: innerRotate }] },
+            ]}
+          />
+          <View style={styles.centerRing} />
+
+          <Animated.View
+            style={[
+              styles.orb,
+              { transform: [{ translateX: orb1X }, { translateY: orb1Y }] },
+            ]}
+          />
+
+          {item.image && (
+            <Image
+              source={item.image}
+              style={styles.slideImage}
+              resizeMode="contain"
+            />
+          )}
+        </Animated.View>
+      </Animated.View>
+    </View>
+  );
+}
+
+const Welcome: React.FC = () => {
+  const listRef = useRef<FlatList<OnboardingItem>>(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
+  const [activeIndex, setActiveIndex] = useState<number>(0);
+
+  const isLastSlide = activeIndex === onboarding.length - 1;
+
+  const glowPulse = useRef(new Animated.Value(1)).current;
+
+  const sheetSlide = useRef(new Animated.Value(30)).current;
+  const sheetFade = useRef(new Animated.Value(0)).current;
+
+  const copyFade = useRef(new Animated.Value(0)).current;
+  const copySlide = useRef(new Animated.Value(15)).current;
 
   useEffect(() => {
-    // Staggered Entrance Animations
-    Animated.stagger(100, [
-      Animated.timing(heroAnim, {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, {
+          toValue: 1.15,
+          duration: 2500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowPulse, {
+          toValue: 1,
+          duration: 2500,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    Animated.parallel([
+      Animated.timing(sheetFade, {
         toValue: 1,
-        duration: 650,
-        easing: Easing.out(Easing.cubic),
+        duration: 500,
         useNativeDriver: true,
       }),
-      Animated.timing(leftAnim, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(rightAnim, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(trendAnim, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(bottomAnim, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.out(Easing.cubic),
+      Animated.spring(sheetSlide, {
+        toValue: 0,
+        tension: 60,
+        friction: 10,
         useNativeDriver: true,
       }),
     ]).start();
   }, []);
 
+  useEffect(() => {
+    copyFade.setValue(0);
+    copySlide.setValue(15);
+    Animated.parallel([
+      Animated.timing(copyFade, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+      Animated.timing(copySlide, {
+        toValue: 0,
+        duration: 0,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [activeIndex]);
+
+  const goNext = () => {
+    if (isLastSlide) {
+      router.replace("/(auth)/sign-up");
+    } else {
+      listRef.current?.scrollToIndex({
+        index: activeIndex + 1,
+        animated: true,
+      });
+    }
+  };
+
+  const current: OnboardingItem = onboarding[activeIndex] ?? onboarding[0];
+
+  const handleScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const i = Math.round(e.nativeEvent.contentOffset.x / width);
+    setActiveIndex(i);
+  };
+
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.soft} />
+      <StatusBar barStyle="light-content" backgroundColor={PALETTE.bg} />
 
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.appFrame}>
-          
-          {/* Header Branding */}
+      <Animated.View
+        style={[styles.ambientGlow, { transform: [{ scale: glowPulse }] }]}
+      />
+
+      <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
+        <View style={styles.topBar}>
           <View style={styles.brandRow}>
             <Image
-              source={require("../../assets/images/icon.png")}
-              style={styles.brandLogo}
+              source={hopOnLogo}
+              style={styles.brandMarkImage}
               resizeMode="contain"
             />
-            <Text style={styles.brandText}>Lyft</Text>
+            <Text style={styles.brandText}>HopOn</Text>
           </View>
 
-          {/* 1. Hero Card - Slides in from Right */}
-          <HeroCard anim={heroAnim} />
-
-          {/* 2. Top Row Grid */}
-          <View style={styles.gridTwo}>
-            <StatCard
-              title="Savings"
-              subtitle="Earn 3.75% APY"
-              iconName="wallet-outline"
-              anim={leftAnim}
-              direction="left"
-            />
-            <StatCard
-              title="Subscriptions"
-              subtitle="View all"
-              iconName="receipt-outline"
-              anim={rightAnim}
-              direction="right"
-            />
-          </View>
-
-          {/* 3. Consumer Trend Banner */}
-          <TrendCard anim={trendAnim} />
-
-          {/* 4. Bottom Row Grid */}
-          <View style={styles.gridTwo}>
-            <StatCard
-              title="Billing"
-              subtitle="Auto payments"
-              iconName="card-outline"
-              anim={bottomAnim}
-              direction="left"
-            />
-            <StatCard
-              title="Tools"
-              subtitle="Check all available"
-              iconName="construct-outline"
-              anim={bottomAnim}
-              direction="right"
-            />
-          </View>
-
-          {/* CTA Action Button */}
           <TouchableOpacity
-            style={styles.cta}
             onPress={() => router.replace("/(auth)/sign-up")}
-            activeOpacity={0.88}
+            style={styles.closeBtn}
+            activeOpacity={0.75}
           >
-            <Text style={styles.ctaText}>Continue</Text>
-            <Ionicons name="arrow-forward" size={19} color={COLORS.white} />
+            <Image
+              source={icons.close}
+              resizeMode="contain"
+              style={styles.navIcon}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.stage}>
+          <Animated.FlatList
+            ref={listRef}
+            data={onboarding as OnboardingItem[]}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item, index }: ListRenderItemInfo<OnboardingItem>) => (
+              <Slide item={item} index={index} scrollX={scrollX} />
+            )}
+            horizontal
+            pagingEnabled
+            bounces={false}
+            showsHorizontalScrollIndicator={false}
+            scrollEventThrottle={16}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+              { useNativeDriver: false }
+            )}
+            onMomentumScrollEnd={handleScrollEnd}
+          />
+        </View>
+
+        <Animated.View
+          style={[
+            styles.bottomSheet,
+            { opacity: sheetFade, transform: [{ translateY: sheetSlide }] },
+          ]}
+        >
+          <View style={styles.dotsRow}>
+            {onboarding.map((_, i: number) => {
+              const range = [
+                (i - 1) * width,
+                i * width,
+                (i + 1) * width,
+              ];
+              const dotWidth = scrollX.interpolate({
+                inputRange: range,
+                outputRange: [6, 22, 6],
+                extrapolate: "clamp",
+              });
+              const dotOpacity = scrollX.interpolate({
+                inputRange: range,
+                outputRange: [0.3, 1, 0.3],
+                extrapolate: "clamp",
+              });
+              return (
+                <Animated.View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    { width: dotWidth, opacity: dotOpacity },
+                  ]}
+                />
+              );
+            })}
+          </View>
+
+          <Animated.View
+            style={[
+              styles.copyContainer,
+              { opacity: copyFade, transform: [{ translateY: copySlide }] },
+            ]}
+          >
+            <Text style={styles.title}>{current.title}</Text>
+            <Text style={styles.description}>{current.description}</Text>
+          </Animated.View>
+
+          <TouchableOpacity
+            style={styles.ctaButton}
+            onPress={goNext}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.ctaText}>
+              {isLastSlide ? "Get Started" : "Continue"}
+            </Text>
+            <Image
+              source={icons.to}
+              resizeMode="contain"
+              style={styles.ctaIcon}
+            />
           </TouchableOpacity>
 
-        </View>
+          <TouchableOpacity
+            style={styles.loginRow}
+            onPress={() => router.replace("/(auth)/sign-in")}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.loginLabel}>Already have an account?</Text>
+            <Text style={styles.loginAction}>Log in</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
@@ -284,282 +449,198 @@ const Welcome = () => {
 
 export default Welcome;
 
-// ==========================================
-// STYLESHEET
-// ==========================================
+const STAGE_HEIGHT = height * 0.42;
+const ART_SIZE = width * 0.65;
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: COLORS.soft,
+    backgroundColor: PALETTE.bg,
   },
   safeArea: {
     flex: 1,
+    justifyContent: "space-between",
   },
-  appFrame: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    gap: 12,
+  ambientGlow: {
+    position: "absolute",
+    width: width * 0.8,
+    height: width * 0.8,
+    borderRadius: (width * 0.8) / 2,
+    backgroundColor: PALETTE.purpleGlow,
+    opacity: 0.12,
+    alignSelf: "center",
+    top: height * 0.18,
   },
-
-  /* Branding Header */
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 22,
+    paddingTop: 8,
+  },
   brandRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 4,
-    paddingHorizontal: 4,
+    gap: 8,
   },
-  brandLogo: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+  brandMarkImage: {
+    width: 28,
+    height: 28,
   },
   brandText: {
-    marginLeft: 8,
-    color: COLORS.textDark,
-    fontSize: 16,
-    fontWeight: "800",
+    color: PALETTE.white,
+    fontSize: 22,
+    fontFamily: "Jakarta-Bold",
+    letterSpacing: -0.5,
   },
-
-  /* Hero Card */
-  heroCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
-    height: 180,
-    padding: 12,
-    position: "relative",
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: PALETTE.closeBtnBg,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  expandButton: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#F0F2F0",
+  navIcon: {
+    width: 14,
+    height: 14,
+    tintColor: PALETTE.white,
+  },
+  stage: {
+    height: STAGE_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 2,
   },
-
-  /* Hero Line Illustration Elements */
-  heroIllustration: {
-    width: "100%",
-    maxWidth: 240,
-    height: 130,
-    position: "relative",
+  slide: {
+    alignItems: "center",
+    justifyContent: "center",
   },
-  lineOne: {
+  artwork: {
+    width: ART_SIZE,
+    height: ART_SIZE,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  slideImage: {
+    width: ART_SIZE * 0.7,
+    height: ART_SIZE * 0.7,
+  },
+  outerRing: {
     position: "absolute",
-    left: 10,
-    right: 10,
-    top: 64,
-    height: 1.5,
-    borderRadius: 2,
-    backgroundColor: COLORS.dark,
-    opacity: 0.5,
+    width: ART_SIZE,
+    height: ART_SIZE,
+    borderRadius: ART_SIZE / 2,
+    borderWidth: 1,
+    borderColor: PALETTE.circleRing1,
   },
-  lineTwo: {
+  middleRing: {
     position: "absolute",
-    left: 15,
-    right: 15,
-    top: 75,
-    height: 1.5,
-    borderRadius: 2,
-    backgroundColor: COLORS.dark,
-    opacity: 0.5,
-  },
-  plantGroup: {
-    position: "absolute",
-    left: 20,
-    top: 28,
-    width: 22,
-    height: 26,
-  },
-  plantStem: {
-    position: "absolute",
-    left: 10,
-    top: 10,
-    width: 2,
-    height: 20,
-    backgroundColor: COLORS.dark,
-  },
-  plantLeaf: {
-    position: "absolute",
-    left: 2,
-    top: 4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: COLORS.mint,
+    width: ART_SIZE * 0.75,
+    height: ART_SIZE * 0.75,
+    borderRadius: (ART_SIZE * 0.75) / 2,
     borderWidth: 1.5,
-    borderColor: COLORS.dark,
+    borderColor: PALETTE.circleRing2,
   },
-  vehicleWrap: {
+  centerRing: {
     position: "absolute",
-    left: 70,
-    top: 38,
-    width: 88,
-    height: 54,
+    width: ART_SIZE * 0.5,
+    height: ART_SIZE * 0.5,
+    borderRadius: (ART_SIZE * 0.5) / 2,
+    borderWidth: 2,
+    borderColor: PALETTE.circleRing3,
+    backgroundColor: "rgba(138, 63, 252, 0.15)",
   },
-  vehicleBody: {
+  halo: {
     position: "absolute",
-    left: 0,
-    right: 10,
-    bottom: 12,
-    height: 22,
-    borderRadius: 6,
-    backgroundColor: COLORS.mint,
-    borderWidth: 1.5,
-    borderColor: COLORS.dark,
+    width: ART_SIZE * 0.4,
+    height: ART_SIZE * 0.4,
+    borderRadius: (ART_SIZE * 0.4) / 2,
+    backgroundColor: PALETTE.purplePrimary,
+    opacity: 0.35,
   },
-  vehicleRoof: {
+  orb: {
     position: "absolute",
-    left: 16,
-    right: 28,
-    top: 6,
-    height: 16,
+    width: 10,
+    height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.white,
-    borderWidth: 1.5,
-    borderColor: COLORS.dark,
+    backgroundColor: PALETTE.purpleGlow,
+    top: "15%",
+    right: "12%",
   },
-  wheelLeft: {
-    position: "absolute",
-    left: 14,
-    bottom: 4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
-    borderColor: COLORS.dark,
+  bottomSheet: {
+    paddingHorizontal: 28,
+    paddingBottom: 24,
+    alignItems: "center",
   },
-  wheelRight: {
-    position: "absolute",
-    right: 22,
-    bottom: 4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.white,
-    borderWidth: 2,
-    borderColor: COLORS.dark,
-  },
-  sunBurst: {
-    position: "absolute",
-    right: 20,
-    top: 14,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: COLORS.mint,
-    borderWidth: 1.5,
-    borderColor: COLORS.dark,
-  },
-
-  /* Grid Layout */
-  gridTwo: {
+  dotsRow: {
     flexDirection: "row",
-    gap: 12,
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 20,
   },
-  gridItem: {
-    flex: 1,
+  dot: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: PALETTE.purplePrimary,
   },
-
-  /* Reusable Small Cards */
-  card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 14,
-    height: 90,
-    justifyContent: "space-between",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
+  copyContainer: {
+    alignItems: "center",
+    marginBottom: 32,
+    paddingHorizontal: 12,
   },
-  cardTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: COLORS.textDark,
-    letterSpacing: -0.2,
+  title: {
+    color: PALETTE.white,
+    fontSize: 28,
+    fontFamily: "Jakarta-Bold",
+    textAlign: "center",
+    marginBottom: 12,
   },
-  cardSubtitle: {
-    fontSize: 10.5,
-    color: COLORS.textMuted,
-    marginTop: 2,
+  description: {
+    color: PALETTE.textMuted,
+    fontSize: 14,
+    lineHeight: 22,
+    fontFamily: "Jakarta",
+    textAlign: "center",
   },
-
-  /* Consumer Trend Card */
-  trendCard: {
-    backgroundColor: COLORS.dark,
-    borderRadius: 16,
-    padding: 16,
-    overflow: "hidden",
-    shadowColor: COLORS.dark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  badge: {
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    color: COLORS.white,
-    fontSize: 8.5,
-    fontWeight: "800",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  statNumber: {
-    marginTop: 4,
-    color: COLORS.white,
-    fontSize: 42,
-    fontWeight: "800",
-    lineHeight: 44,
-    letterSpacing: -1.5,
-  },
-  statLabel: {
-    marginTop: 2,
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 11,
-  },
-
-  /* Main Action Button */
-  cta: {
-    marginTop: "auto",
+  ctaButton: {
+    width: "100%",
     height: 56,
-    borderRadius: 16,
-    backgroundColor: COLORS.dark,
+    borderRadius: 28,
+    backgroundColor: PALETTE.purplePrimary,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    shadowColor: COLORS.dark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6,
+    gap: 8,
+    shadowColor: PALETTE.purplePrimary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
   },
   ctaText: {
-    color: COLORS.white,
+    color: PALETTE.white,
     fontSize: 16,
-    fontWeight: "700",
-    letterSpacing: 0.2,
+    fontFamily: "Jakarta-Bold",
+  },
+  ctaIcon: {
+    width: 18,
+    height: 18,
+    tintColor: PALETTE.white,
+  },
+  loginRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 20,
+  },
+  loginLabel: {
+    fontSize: 13,
+    color: PALETTE.textMuted,
+    fontFamily: "Jakarta",
+  },
+  loginAction: {
+    fontSize: 13,
+    color: PALETTE.white,
+    fontFamily: "Jakarta-Bold",
   },
 });
