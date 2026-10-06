@@ -1,6 +1,6 @@
-﻿import { useUser } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 import Map from "@/components/Map";
 import { fetchAPI } from "@/lib/fetch";
@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Animated, Pressable, Text, View } from "react-native";
 
 const Home = () => {
+  const { getToken } = useAuth();
   const { user } = useUser();
   const { setUserLocation, userLatitude, userLongitude, userAddress } = useLocationStore();
   const [isOnline, setIsOnline] = useState(false);
@@ -93,9 +94,11 @@ const Home = () => {
     })();
   }, [setUserLocation]);
 
-  useEffect(() => {
-    void loadDriverProfile();
-  }, [loadDriverProfile]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadDriverProfile();
+    }, [loadDriverProfile]),
+  );
 
   useEffect(() => {
     if (!user?.id || userLatitude == null || userLongitude == null) {
@@ -221,9 +224,13 @@ const Home = () => {
     if (!incomingRequest?.ride_id) return;
 
     try {
+      const token = await getToken();
       await fetchAPI(`/(api)/ride/${incomingRequest.ride_id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ action }),
       });
 

@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { resolveDriverVerificationStatus } from "@/lib/business-rules";
 
 // Everything the driver home screen needs, in one request.
 
@@ -15,14 +16,22 @@ export async function GET(request: Request) {
 
     const { data: userRow, error: userError } = await supabase
       .from("users")
-      .select("driver_verification_status, rating, profile_data")
+      .select("rating, profile_data")
       .eq("clerk_id", clerkId)
       .maybeSingle();
 
     if (userError) throw userError;
 
+    const { data: driver, error: driverError } = await supabase
+      .from("drivers")
+      .select("id, verified, status, driver_verification_status")
+      .eq("clerk_id", clerkId)
+      .maybeSingle();
+
+    if (driverError) throw driverError;
+
     const base = {
-      verification_status: userRow?.driver_verification_status ?? "not_submitted",
+      verification_status: resolveDriverVerificationStatus(driver),
       is_online: Boolean(userRow?.profile_data?.is_online),
       rating: userRow?.rating ?? 5,
       today_earnings: 0,
@@ -30,12 +39,6 @@ export async function GET(request: Request) {
       pending_requests: 0,
       next_trip: null as any,
     };
-
-    const { data: driver } = await supabase
-      .from("drivers")
-      .select("id")
-      .eq("clerk_id", clerkId)
-      .maybeSingle();
 
     // A driver row may not exist until verification — the dashboard still
     // renders, it just has nothing to count.

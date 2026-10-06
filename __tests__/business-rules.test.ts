@@ -53,6 +53,16 @@ describe('driver business rules', () => {
     expect(resolveDriverVerificationStatus({ verified: true })).toBe('approved');
   });
 
+  it('does not let a stale pending status hide a verified driver', () => {
+    expect(
+      resolveDriverVerificationStatus({
+        verified: true,
+        driver_verification_status: 'pending',
+        status: 'pending',
+      }),
+    ).toBe('approved');
+  });
+
   it('resolves pending status when status is pending', () => {
     expect(resolveDriverVerificationStatus({ status: 'pending' })).toBe('pending');
   });

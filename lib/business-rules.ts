@@ -51,9 +51,15 @@ export function validateDateOfBirth(value: string): boolean {
 }
 
 export function resolveDriverVerificationStatus(driver: { verified?: boolean; status?: string; driver_verification_status?: string } | null | undefined): string {
+  if (
+    driver?.verified === true ||
+    driver?.driver_verification_status === 'approved' ||
+    driver?.status === 'approved'
+  ) {
+    return 'approved';
+  }
+
   if (driver?.driver_verification_status) return driver.driver_verification_status;
-  if (driver?.verified === true) return 'approved';
-  if (driver?.status === 'approved') return 'approved';
   if (driver?.status === 'pending') return 'pending';
   if (driver?.status === 'rejected') return 'rejected';
   return 'not_submitted';

@@ -1,7 +1,17 @@
+import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Image, Linking, Pressable, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Linking,
+  Modal,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { fetchAPI } from "@/lib/fetch";
 import { formatDate, formatTime } from "@/lib/utils";
@@ -23,7 +33,7 @@ const STATUS = {
   cancelled: { bg: "bg-[#FEF3F3]", text: "text-[#B02A2A]", label: "Cancelled" },
 } as const;
 
-type Action = "accept" | "decline" | "start" | "complete";
+type RideAction = "accept" | "decline" | "start" | "complete";
 
 const Action = ({
   icon,
@@ -61,8 +71,13 @@ const Action = ({
 };
 
 const RequestCard = ({ ride, onChanged }: Props) => {
+  const { getToken } = useAuth();
   const [status, setStatus] = useState<string>((ride as any).status ?? "booked");
   const [busy, setBusy] = useState(false);
+  const [ratingVisible, setRatingVisible] = useState(false);
+  const [passengerRating, setPassengerRating] = useState(5);
+  const [ratingComment, setRatingComment] = useState("");
+  const [isRated, setIsRated] = useState(ride.passenger_rating != null);
 
   const passenger = (ride as any).passenger;
   const passengerName = passenger
@@ -76,33 +91,80 @@ const RequestCard = ({ ride, onChanged }: Props) => {
 
   const s = (STATUS as any)[status] ?? STATUS.booked;
 
-  const run = async (action: Action, nextStatus: string) => {
+  const run = async (
+    action: RideAction,
+    nextStatus: string,
+    refreshAfterSuccess = true,
+  ) => {
     const rideId = (ride as any).ride_id;
-    if (!rideId) return;
+    if (!rideId) return false;
 
     const previous = status;
     setStatus(nextStatus); // optimistic — the tap should feel immediate
     setBusy(true);
 
     try {
+      const token = await getToken();
       // Note the (api) group in the path. A bare /api/... resolves to nothing
       // in expo-router and fails silently.
       await fetchAPI(`/(api)/ride/${rideId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({ action }),
       });
 
-      onChanged?.();
+      if (refreshAfterSuccess) onChanged?.();
+      return true;
     } catch (error: any) {
       setStatus(previous); // roll back so the card doesn't lie
       Alert.alert(
         "Couldn't update",
         error?.message ?? "Please check your connection and try again.",
       );
+      return false;
     } finally {
       setBusy(false);
     }
+  };
+
+  const submitPassengerRating = async () => {
+    const rideId = (ride as any).ride_id;
+    if (!rideId) return;
+
+    setBusy(true);
+    try {
+      const token = await getToken();
+      await fetchAPI(`/(api)/ride/${rideId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          action: "rate",
+          rating: passengerRating,
+          comment: ratingComment.trim(),
+        }),
+      });
+      setIsRated(true);
+      setRatingVisible(false);
+      onChanged?.();
+    } catch (error: any) {
+      Alert.alert(
+        "Couldn't save rating",
+        error?.message ?? "Please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const skipPassengerRating = () => {
+    setRatingVisible(false);
+    onChanged?.();
   };
 
   const confirmDecline = () =>
@@ -312,7 +374,21 @@ const RequestCard = ({ ride, onChanged }: Props) => {
               label="End trip"
               tone="primary"
               busy={busy}
-              onPress={() => run("complete", "completed")}
+              onPress={async () => {
+                const completed = await run("complete", "completed", false);
+                if (completed && !isRated) setRatingVisible(true);
+                else if (completed) onChanged?.();
+              }}
+            />
+          )}
+
+          {status === "completed" && !isRated && (
+            <Action
+              icon="star-outline"
+              label="Rate passenger"
+              tone="primary"
+              busy={busy}
+              onPress={() => setRatingVisible(true)}
             />
           )}
 
@@ -327,6 +403,75 @@ const RequestCard = ({ ride, onChanged }: Props) => {
           )}
         </View>
       </View>
+
+      <Modal
+        visible={ratingVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={skipPassengerRating}
+      >
+        <View className="flex-1 items-center justify-center bg-black/40 px-6">
+          <View className="w-full rounded-3xl bg-white p-6">
+            <Text className="text-center text-xl font-JakartaExtraBold text-[#101814]">
+              Rate {passengerName}
+            </Text>
+            <Text className="mt-2 text-center text-sm font-Jakarta text-[#68756F]">
+              How was your passenger?
+            </Text>
+            <View className="my-6 flex-row justify-center gap-2">
+              {Array.from({ length: 5 }, (_, index) => {
+                const value = index + 1;
+                return (
+                  <Pressable
+                    key={value}
+                    onPress={() => setPassengerRating(value)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${value} star${value === 1 ? "" : "s"}`}
+                    className="p-1"
+                  >
+                    <Ionicons
+                      name={value <= passengerRating ? "star" : "star-outline"}
+                      size={34}
+                      color={value <= passengerRating ? "#E6A700" : "#C8D0CC"}
+                    />
+                  </Pressable>
+                );
+              })}
+            </View>
+            <TextInput
+              value={ratingComment}
+              onChangeText={setRatingComment}
+              placeholder="Add a comment about your experience (optional)"
+              placeholderTextColor="#9BA6A1"
+              multiline
+              maxLength={500}
+              textAlignVertical="top"
+              className="mb-5 min-h-24 rounded-xl border border-[#E2E9E5] bg-[#F8FAF9] px-4 py-3 text-sm font-Jakarta text-[#101814]"
+              accessibilityLabel="Comment about your passenger"
+            />
+            <Pressable
+              onPress={submitPassengerRating}
+              disabled={busy}
+              className={`items-center rounded-xl bg-[#0E5C3F] py-3.5 ${
+                busy ? "opacity-50" : "active:opacity-75"
+              }`}
+            >
+              <Text className="text-sm font-JakartaBold text-white">
+                {busy ? "Saving..." : "Submit rating"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={skipPassengerRating}
+              disabled={busy}
+              className="mt-3 items-center py-2"
+            >
+              <Text className="text-sm font-JakartaMedium text-[#68756F]">
+                Skip for now
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };

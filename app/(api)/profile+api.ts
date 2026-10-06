@@ -1,28 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase-server";
-
-function resolveDriverVerificationStatus(driver: any) {
-  if (driver?.driver_verification_status) {
-    return driver.driver_verification_status;
-  }
-
-  if (driver?.verified === true) {
-    return "approved";
-  }
-
-  if (driver?.status === "approved") {
-    return "approved";
-  }
-
-  if (driver?.status === "pending") {
-    return "pending";
-  }
-
-  if (driver?.status === "rejected") {
-    return "rejected";
-  }
-
-  return "not_submitted";
-}
+import { resolveDriverVerificationStatus } from "@/lib/business-rules";
 
 function parseNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {

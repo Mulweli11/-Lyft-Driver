@@ -55,6 +55,8 @@ declare interface Ride {
   created_at?: string | null;
   scheduled_for?: string | null;
   completed_at?: string | null;
+  passenger_rating?: number | null;
+  passenger_rating_comment?: string | null;
   cancelled_at?: string | null;
   cancel_reason?: string | null;
   duration_minutes?: number | null;
