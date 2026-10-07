@@ -13,9 +13,14 @@ import {
   View,
 } from "react-native";
 
-import { brand, ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
-import { formatDate, formatTime } from "@/lib/utils";
+import {
+  estimateArrivalTime,
+  estimateRideDurationMinutes,
+  formatClockTime,
+  formatDate,
+  formatTime,
+} from "@/lib/utils";
 import { Ride } from "@/types/type";
 
 type Props = {
@@ -84,8 +89,15 @@ const RequestCard = ({ ride, onChanged }: Props) => {
 
   const seats = (ride as any).seats_booked ?? 1;
   const fare = ((ride as any).fare_price ?? 0) / 100;
-  const duration = (ride as any).duration_minutes;
+  const duration = estimateRideDurationMinutes({
+    durationMinutes: ride.duration_minutes,
+    originLatitude: ride.origin_latitude,
+    originLongitude: ride.origin_longitude,
+    destinationLatitude: ride.destination_latitude,
+    destinationLongitude: ride.destination_longitude,
+  });
   const when = (ride as any).scheduled_for ?? ride.created_at;
+  const estimatedDropoff = estimateArrivalTime(when, duration);
 
   const s = (STATUS as any)[status] ?? STATUS.booked;
 
@@ -300,10 +312,22 @@ const RequestCard = ({ ride, onChanged }: Props) => {
             </View>
             <Text className="mt-0.5 text-[11px] font-Jakarta text-[#746A7E]">
               {ride.payment_status === "paid" ? "Paid in app" : "Payment pending"}
-              {duration ? ` · ${formatTime(duration)} trip` : ""}
+              {duration != null ? ` · ${formatTime(duration)} estimated` : ""}
             </Text>
           </View>
         </View>
+
+        {estimatedDropoff && (
+          <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-[#F7F4FB] px-3 py-2">
+            <Ionicons name="time-outline" size={15} color="#5A189A" />
+            <Text className="text-[12px] font-JakartaMedium text-[#746A7E]">
+              Estimated drop-off
+            </Text>
+            <Text className="ml-auto text-[12px] font-JakartaBold text-[#5A189A]">
+              {formatClockTime(estimatedDropoff)}
+            </Text>
+          </View>
+        )}
 
         {/* Actions */}
         <View className="mt-4 flex-row gap-2">

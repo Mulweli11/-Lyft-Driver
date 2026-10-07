@@ -58,7 +58,7 @@ const Profile = () => {
     }, [load]),
   );
 
-  const vehicle = profile?.profile_data?.vehicle ?? {};
+  const vehicle = profile?.vehicle ?? {};
   const driverStatus = profile?.driver_verification_status ?? "not_submitted";
   const approved = driverStatus === "approved";
   const idVerified = profile?.id_verified === true;

@@ -48,6 +48,27 @@ export async function GET(request: Request) {
     }
 
     const driverVerificationStatus = resolveDriverVerificationStatus(profile);
+    let vehicle = profile?.profile_data?.vehicle ?? null;
+
+    if (profile) {
+      const { data: storedVehicle, error: vehicleError } = await supabase
+        .from("driver_vehicles")
+        .select("make, model, year, colour, plate, seats")
+        .eq("driver_id", profile.id)
+        .maybeSingle();
+
+      if (
+        vehicleError &&
+        ["42P01", "PGRST205"].includes(String(vehicleError.code))
+      ) {
+        console.warn(
+          "Driver vehicles table is not installed yet; using legacy vehicle data.",
+        );
+      } else if (vehicleError) {
+        throw vehicleError;
+      }
+      if (storedVehicle) vehicle = storedVehicle;
+    }
 
     if (
       profile &&
@@ -101,6 +122,7 @@ export async function GET(request: Request) {
         ? {
             ...profile,
             rating: Number(driverRating.toFixed(2)),
+            vehicle,
             name: profile.full_name ?? null,
             profile_data: profile.profile_data ?? {},
             driver_verification_status: driverVerificationStatus,
@@ -116,7 +138,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { clerkId, profile_data, ...updates } = body;
+    const { clerkId, profile_data, vehicle, ...updates } = body;
 
     if (!clerkId) {
       return Response.json({ error: "Missing clerkId" }, { status: 400 });
@@ -125,9 +147,29 @@ export async function POST(request: Request) {
     const supabase = await getSupabaseServerClient();
 
     const profilePayload =
-      profile_data && typeof profile_data === "object" ? profile_data : undefined;
+      profile_data && typeof profile_data === "object" ? { ...profile_data } : undefined;
+
+    if (profilePayload && "vehicle" in profilePayload) {
+      delete profilePayload.vehicle;
+    }
 
     const updatePayload: Record<string, unknown> = {};
+
+    if (vehicle != null) {
+      if (
+        typeof vehicle !== "object" ||
+        typeof vehicle.make !== "string" ||
+        typeof vehicle.model !== "string" ||
+        typeof vehicle.year !== "string" ||
+        typeof vehicle.colour !== "string" ||
+        typeof vehicle.plate !== "string" ||
+        !Number.isInteger(Number(vehicle.seats)) ||
+        Number(vehicle.seats) < 1
+      ) {
+        return Response.json({ error: "Invalid vehicle details" }, { status: 400 });
+      }
+      updatePayload.car_seats = Number(vehicle.seats);
+    }
 
     if (profilePayload) {
       updatePayload.profile_data = {
@@ -370,7 +412,10 @@ export async function POST(request: Request) {
               verification_percentage: parseNumber(
                 updates.verification_percentage,
               ),
-              car_seats: parseNumber(updates.car_seats),
+              car_seats:
+                vehicle != null
+                  ? Number(vehicle.seats)
+                  : parseNumber(updates.car_seats),
               is_online:
                 typeof updates.is_online === "boolean"
                   ? updates.is_online
@@ -446,10 +491,31 @@ export async function POST(request: Request) {
             .single()
         ).data;
 
+    if (vehicle != null && resultData?.id) {
+      const { error: vehicleError } = await supabase
+        .from("driver_vehicles")
+        .upsert(
+          {
+            driver_id: resultData.id,
+            make: vehicle.make.trim(),
+            model: vehicle.model.trim(),
+            year: vehicle.year.trim(),
+            colour: vehicle.colour.trim(),
+            plate: vehicle.plate.trim().toUpperCase(),
+            seats: Number(vehicle.seats),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "driver_id" },
+        );
+
+      if (vehicleError) throw vehicleError;
+    }
+
     return Response.json({
       data: resultData
         ? {
             ...resultData,
+            ...(vehicle ? { vehicle } : {}),
             name: resultData.full_name ?? null,
           }
         : null,

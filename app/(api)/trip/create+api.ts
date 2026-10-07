@@ -49,9 +49,27 @@ export async function POST(request: Request) {
     if (!driver) {
       const { data: profile } = await supabase
         .from("users")
-        .select("name, profile_image_url, profile_data, status, verified")
+        .select("name, profile_image_url, status, verified")
         .eq("clerk_id", clerkId)
         .maybeSingle();
+
+      const { data: vehicle, error: vehicleError } = await supabase
+        .from("driver_vehicles")
+        .select("seats, drivers!inner(clerk_id)")
+        .eq("drivers.clerk_id", clerkId)
+        .maybeSingle();
+
+      if (
+        vehicleError &&
+        !["42P01", "PGRST205"].includes(String(vehicleError.code))
+      ) {
+        throw vehicleError;
+      }
+      if (vehicleError) {
+        console.warn(
+          "Driver vehicles table is not installed yet; using requested trip seats.",
+        );
+      }
 
       const [first, ...rest] = String(profile?.name ?? "Driver").split(" ");
       const { data: created, error: createError } = await supabase
@@ -61,11 +79,11 @@ export async function POST(request: Request) {
           first_name: first,
           last_name: rest.join(" "),
           profile_image_url: profile?.profile_image_url ?? null,
-          car_seats: profile?.profile_data?.vehicle?.seats ?? seats_total,
+          car_seats: vehicle?.seats ?? seats_total,
           rating: 5,
           status: typeof profile?.status === "string" ? profile.status : "pending",
           verified: typeof profile?.verified === "boolean" ? profile.verified : false,
-          profile_data: profile?.profile_data ?? {},
+          profile_data: {},
         })
         .select("id, verified, status")
         .single();

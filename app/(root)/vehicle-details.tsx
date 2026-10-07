@@ -75,7 +75,7 @@ const VehicleDetails = () => {
           const result = await fetchAPI(
             `/(api)/profile?clerkId=${encodeURIComponent(user.id)}`,
           );
-          const stored = result?.data?.profile_data?.vehicle;
+          const stored = result?.data?.vehicle;
           if (stored) setVehicle({ ...EMPTY, ...stored });
         } catch (error) {
           console.warn("Could not load vehicle", error);
@@ -112,20 +112,24 @@ const VehicleDetails = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           clerkId: user.id,
-          profile_data: {
-            vehicle: {
-              ...vehicle,
-              make: vehicle.make.trim(),
-              model: vehicle.model.trim(),
-              colour: vehicle.colour.trim(),
-              plate: vehicle.plate.trim().toUpperCase(),
-            },
+          vehicle: {
+            ...vehicle,
+            make: vehicle.make.trim(),
+            model: vehicle.model.trim(),
+            year: vehicle.year.trim(),
+            colour: vehicle.colour.trim(),
+            plate: vehicle.plate.trim().toUpperCase(),
           },
         }),
       });
       router.back();
     } catch (error) {
-      Alert.alert("Couldn't save", "Please check your connection and try again.");
+      Alert.alert(
+        "Couldn't save",
+        error instanceof Error
+          ? error.message
+          : "Please check your connection and try again.",
+      );
     } finally {
       setSaving(false);
     }
