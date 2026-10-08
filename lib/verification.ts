@@ -57,11 +57,43 @@ export type VerificationStatus =
   | "approved"
   | "rejected";
 
+export type AutomatedDocStatus =
+  | "verified"
+  | "pending_review"
+  | "failed"
+  | "expired"
+  | "mismatch";
+
 export type PickedImage = {
   uri: string;
   base64?: string;
   mimeType: string;
+  fileSize?: number;
 };
+
+// Security constants for zero-trust document uploads
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 Megabytes max
+export const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+];
+
+export function validateDocumentSecurity(image: PickedImage): void {
+  if (image.mimeType && !ALLOWED_MIME_TYPES.includes(image.mimeType.toLowerCase())) {
+    throw new Error(
+      `File format '${image.mimeType}' is not supported. Please upload a clear JPG, PNG, WEBP, or PDF.`,
+    );
+  }
+
+  if (image.fileSize && image.fileSize > MAX_UPLOAD_BYTES) {
+    throw new Error(
+      "File size exceeds the 10MB limit. Please compress or take a photo with lower resolution.",
+    );
+  }
+}
 
 async function getImageBuffer(image: PickedImage): Promise<ArrayBuffer> {
   if (image.base64) {
@@ -177,6 +209,9 @@ export async function uploadDocument(
   kind: DocKind,
   image: PickedImage,
 ): Promise<string> {
+  // POPIA & Zero-trust: Enforce file format and size limits before upload
+  validateDocumentSecurity(image);
+
   const supabase = await getSupabaseClient();
 
   const extension = image.mimeType.includes("png") ? "png" : "jpg";
@@ -198,6 +233,27 @@ export async function uploadDocument(
   }
 
   return path;
+}
+
+export async function verifyDocumentAutomated(payload: {
+  clerkId: string;
+  docKind: DocKind;
+  filePath: string;
+  expiryDate?: string | null;
+  extractedData?: {
+    plate?: string;
+    licenceNumber?: string;
+    idNumber?: string;
+    fullName?: string;
+    vin?: string;
+    pdpCategory?: string;
+  };
+}) {
+  return fetchAPI("/(api)/verify-document", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function uploadAvatar(

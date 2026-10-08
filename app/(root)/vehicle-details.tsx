@@ -141,15 +141,15 @@ const VehicleDetails = () => {
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View className="flex-row items-center gap-3 px-5 pb-2 pt-2">
+        <View className="flex-row items-center gap-3.5 px-6 pb-3 pt-3">
           <Pressable
             onPress={() => router.back()}
             hitSlop={8}
-            className="h-10 w-10 items-center justify-center rounded-xl border border-[#E9E2F0] bg-white active:opacity-70"
+            className="h-11 w-11 items-center justify-center rounded-2xl border border-[#E9E2F0] bg-white active:opacity-70 shadow-sm"
           >
             <Ionicons name="chevron-back" size={20} color="#21152F" />
           </Pressable>
-          <Text className="text-[19px] font-JakartaExtraBold text-[#21152F]">
+          <Text className="text-[20px] font-JakartaExtraBold text-[#21152F]">
             Your vehicle
           </Text>
         </View>
@@ -160,17 +160,17 @@ const VehicleDetails = () => {
           </View>
         ) : (
           <ScrollView
-            className="px-5"
-            contentContainerStyle={{ paddingTop: 12, paddingBottom: 40 }}
+            className="px-6"
+            contentContainerStyle={{ paddingTop: 16, paddingBottom: 48 }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text className="mb-4 text-[13px] font-Jakarta leading-5 text-[#746A7E]">
+            <Text className="mb-5 text-[13.5px] font-Jakarta leading-6 text-[#746A7E]">
               Passengers see the make, colour and registration so they can find
               you at pickup. It must match your licence disc.
             </Text>
 
-            <View className="rounded-3xl border border-[#E9E2F0] bg-white p-5">
+            <View className="rounded-3xl border border-[#E9E2F0] bg-white p-6 shadow-sm">
               {FIELDS.map((field) => (
                 <View key={field.key} className="mb-4">
                   <Text className="mb-2 text-[12.5px] font-JakartaSemiBold text-[#746A7E]">
