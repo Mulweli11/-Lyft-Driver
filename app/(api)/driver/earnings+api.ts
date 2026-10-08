@@ -59,7 +59,7 @@ export async function GET(request: Request) {
         .eq("status", "completed"),
       supabase
         .from("payouts")
-        .select("id, amount, status, created_at, bank_last4")
+        .select("id, amount, status, created_at, bank_last4, is_mock")
         .eq("driver_id", driver.id)
         .order("created_at", { ascending: false })
         .limit(30),

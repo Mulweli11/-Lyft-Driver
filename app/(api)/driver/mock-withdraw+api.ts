@@ -1,3 +1,4 @@
+import { requireClerkUser } from "@/lib/server-auth";
 import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 const MIN_WITHDRAWAL = 50;
@@ -6,37 +7,31 @@ const CLEARING_HOURS = 24;
 
 export async function POST(request: Request) {
   try {
-    const { clerkId, amount } = await request.json();
-    const requested = Number(amount);
-
-    if (!clerkId || !Number.isFinite(requested)) {
-      return Response.json({ error: "Missing required fields" }, { status: 400 });
+    if (process.env.NODE_ENV === "production") {
+      return Response.json(
+        { error: "Mock withdrawals are disabled in production" },
+        { status: 404 },
+      );
     }
-    if (requested < MIN_WITHDRAWAL) {
+
+    const clerkId = await requireClerkUser(request);
+    const body = await request.json();
+    const amount = Number(body?.amount);
+
+    if (!Number.isFinite(amount) || amount < MIN_WITHDRAWAL) {
       return Response.json(
         { error: `Minimum withdrawal is R${MIN_WITHDRAWAL}` },
         { status: 400 },
       );
     }
-
-    const supabase = await getSupabaseServerClient();
-
-    const { data: userRow, error: userError } = await supabase
-      .from("users")
-      .select("profile_data")
-      .eq("clerk_id", clerkId)
-      .maybeSingle();
-
-    if (userError) throw userError;
-
-    const bank = userRow?.profile_data?.bank_account;
-    if (!bank?.last4) {
+    if (Math.round(amount * 100) !== amount * 100) {
       return Response.json(
-        { error: "Add a bank account before withdrawing" },
+        { error: "Withdrawal amount must have no more than two decimal places" },
         { status: 400 },
       );
     }
 
+    const supabase = await getSupabaseServerClient();
     const { data: driver, error: driverError } = await supabase
       .from("drivers")
       .select("id")
@@ -44,19 +39,15 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (driverError) throw driverError;
-
     if (!driver) {
       return Response.json({ error: "Driver record not found" }, { status: 404 });
     }
 
-    // Recompute the balance server-side. The client's number is a display
-    // value, never an authority — otherwise anyone can withdraw anything.
     const cutoff = new Date(Date.now() - CLEARING_HOURS * 3600_000).toISOString();
-
     const [completed, payouts] = await Promise.all([
       supabase
         .from("rides")
-        .select("fare_price, completed_at")
+        .select("fare_price")
         .eq("driver_id", driver.id)
         .eq("status", "completed")
         .lte("completed_at", cutoff),
@@ -70,16 +61,20 @@ export async function POST(request: Request) {
     if (payouts.error) throw payouts.error;
 
     const cleared = (completed.data ?? []).reduce(
-      (sum: number, r: any) => sum + ((r.fare_price ?? 0) * (1 - COMMISSION)) / 100,
+      (total: number, ride: { fare_price: number | null }) =>
+        total + ((ride.fare_price ?? 0) * (1 - COMMISSION)) / 100,
       0,
     );
     const withdrawn = (payouts.data ?? [])
-      .filter((p: any) => p.status !== "failed")
-      .reduce((sum: number, p: any) => sum + Number(p.amount ?? 0), 0);
-
+      .filter((payout: { status: string }) => payout.status !== "failed")
+      .reduce(
+        (total: number, payout: { amount: number | string | null }) =>
+          total + Number(payout.amount ?? 0),
+        0,
+      );
     const available = Math.max(0, cleared - withdrawn);
 
-    if (requested > available) {
+    if (amount > available) {
       return Response.json(
         { error: `Only R${available.toFixed(2)} is available` },
         { status: 409 },
@@ -90,21 +85,19 @@ export async function POST(request: Request) {
       .from("payouts")
       .insert({
         driver_id: driver.id,
-        amount: requested,
-        status: "pending",
-        bank_last4: bank.last4,
+        amount,
+        status: "paid",
+        bank_last4: null,
+        is_mock: true,
       })
       .select()
       .single();
 
     if (error) throw error;
-
-    // In production this is where a Stripe/Paystack transfer would be created.
-    // For the project, payouts stay "pending" until marked paid by an admin.
-
     return Response.json({ data }, { status: 201 });
   } catch (error) {
-    console.error("Error creating withdrawal:", error);
+    if (error instanceof Response) return error;
+    console.error("Error creating mock withdrawal:", error);
     return Response.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

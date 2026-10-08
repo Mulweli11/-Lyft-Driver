@@ -1,11 +1,13 @@
-import { useUser } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -29,6 +31,7 @@ type Payout = {
   status: "pending" | "paid" | "failed";
   created_at: string;
   bank_last4?: string;
+  is_mock?: boolean;
 };
 
 type Summary = {
@@ -47,6 +50,7 @@ const STATUS = {
 };
 
 const Earnings = () => {
+  const { getToken } = useAuth();
   const { user } = useUser();
 
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -94,26 +98,37 @@ const Earnings = () => {
     return null;
   }, [amount, requested, available]);
 
-  const canWithdraw = hasBank && !amountError && requested >= MIN_WITHDRAWAL;
+  const canWithdraw =
+    (hasBank || __DEV__) && !amountError && requested >= MIN_WITHDRAWAL;
 
   const withdraw = async () => {
     if (!canWithdraw || !user?.id) return;
     setSubmitting(true);
 
     try {
-      await fetchAPI("/(api)/driver/withdraw", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clerkId: user.id, amount: requested }),
-      });
+      const token = await getToken();
+      const isMock = __DEV__;
+      await fetchAPI(
+        isMock ? "/(api)/driver/mock-withdraw" : "/(api)/driver/withdraw",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ clerkId: user.id, amount: requested }),
+        },
+      );
 
       setSheetOpen(false);
       setAmount("");
       await load();
 
       Alert.alert(
-        "Withdrawal requested",
-        `R${requested} is on its way to your account ending ${summary?.bank_account_last4}. Bank transfers usually take one to two working days.`,
+        isMock ? "Mock withdrawal complete" : "Withdrawal requested",
+        isMock
+          ? `R${requested} was recorded as a simulated withdrawal. No Stripe payout or real bank transfer was made.`
+          : `Your request for R${requested} to your bank account ending ${summary?.bank_account_last4} is pending processing. You can track it in withdrawal history.`,
       );
     } catch (error: any) {
       Alert.alert(
@@ -236,9 +251,11 @@ const Earnings = () => {
                     : "No bank account added"}
                 </Text>
                 <Text className="mt-0.5 text-[12px] font-Jakarta text-[#746A7E]">
-                  {hasBank
-                    ? "Payouts are sent here"
-                    : "Add one to receive your earnings"}
+                  {__DEV__
+                    ? "Bank account not needed for test simulation"
+                    : hasBank
+                      ? "Payouts are sent here"
+                      : "Add one to receive your earnings"}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#A69BAF" />
@@ -257,7 +274,9 @@ const Earnings = () => {
               />
             ) : (
               payouts.map((payout) => {
-                const s = STATUS[payout.status] ?? STATUS.pending;
+                const s = payout.is_mock
+                  ? { bg: "bg-[#F0E6FA]", text: "text-[#5A189A]", label: "Simulated" }
+                  : STATUS[payout.status] ?? STATUS.pending;
                 return (
                   <View
                     key={payout.id}
@@ -301,82 +320,118 @@ const Earnings = () => {
         animationType="slide"
         onRequestClose={() => setSheetOpen(false)}
       >
-        <Pressable className="flex-1 bg-black/40" onPress={() => setSheetOpen(false)} />
-
-        <View className="rounded-t-3xl bg-white px-6 pb-9 pt-3">
-          <View className="mb-5 items-center">
-            <View className="h-1 w-11 rounded-full bg-[#E9E2F0]" />
-          </View>
-
-          <Text className="text-[20px] font-JakartaExtraBold text-[#21152F]">
-            Withdraw earnings
-          </Text>
-          <Text className="mt-1 text-[13px] font-Jakarta text-[#746A7E]">
-            R{available.toFixed(2)} available
-            {hasBank ? ` · account ending ${summary?.bank_account_last4}` : ""}
-          </Text>
+        <KeyboardAvoidingView
+          className="flex-1 justify-end"
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
+          <Pressable
+            className="absolute inset-0 bg-black/40"
+            onPress={() => setSheetOpen(false)}
+          />
 
           <View
-            className={`mt-5 flex-row items-center rounded-2xl border-[1.5px] px-4 ${
-              amountError
-                ? "border-[#E0575B] bg-[#FEF3F3]"
-                : "border-[#E9E2F0] bg-[#F7F4FB]"
-            }`}
+            className="rounded-t-3xl bg-white px-6 pt-3"
+            style={{ maxHeight: "90%" }}
           >
-            <Text className="text-[24px] font-JakartaExtraBold text-[#746A7E]">R</Text>
-            <TextInput
-              value={amount}
-              onChangeText={(v) => setAmount(v.replace(/[^0-9]/g, ""))}
-              placeholder="0"
-              placeholderTextColor={ui.faint}
-              keyboardType="number-pad"
-              autoFocus
-              className="ml-2 h-[62px] flex-1 text-[24px] font-JakartaExtraBold text-[#21152F]"
-            />
-            <Pressable
-              onPress={() => setAmount(String(Math.floor(available)))}
-              className="rounded-full bg-[#F0E6FA] px-3 py-1.5 active:opacity-70"
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 36 }}
             >
-              <Text className="text-[12px] font-JakartaBold text-[#5A189A]">All</Text>
-            </Pressable>
-          </View>
+              <View className="mb-5 items-center">
+                <View className="h-1 w-11 rounded-full bg-[#E9E2F0]" />
+              </View>
 
-          {!!amountError && (
-            <View className="mt-2 flex-row items-center gap-1.5">
-              <Ionicons name="alert-circle-outline" size={14} color="#E0575B" />
-              <Text className="text-[12px] font-JakartaMedium text-[#E0575B]">
-                {amountError}
+              <Text className="text-[20px] font-JakartaExtraBold text-[#21152F]">
+                Withdraw earnings
               </Text>
-            </View>
-          )}
-
-          {!hasBank && (
-            <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#FFF6E5] p-3.5">
-              <Ionicons name="warning-outline" size={15} color="#D99A1B" />
-              <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#D99A1B]">
-                Add a bank account before withdrawing. You&apos;ll find it under
-                driver verification.
+              <Text className="mt-1 text-[13px] font-Jakarta text-[#746A7E]">
+                R{available.toFixed(2)} available
+                {__DEV__
+                  ? " · simulation only"
+                  : hasBank
+                    ? ` · account ending ${summary?.bank_account_last4}`
+                    : ""}
               </Text>
-            </View>
-          )}
 
-          <View className="mt-4 flex-row gap-2.5 rounded-2xl border border-[#E9E2F0] p-4">
-            <Ionicons name="time-outline" size={15} color="#5A189A" />
-            <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#746A7E]">
-              Bank transfers take one to two working days. There is no fee for
-              withdrawing.
-            </Text>
-          </View>
+              {__DEV__ && (
+                <Text className="mt-2 text-[12px] font-JakartaMedium text-[#D99A1B]">
+                  Test simulation only. No money will be transferred.
+                </Text>
+              )}
 
-          <View className="mt-5">
-            <CustomButton
-              title={submitting ? "Requesting…" : `Withdraw R${requested || 0}`}
-              loading={submitting}
-              disabled={!canWithdraw}
-              onPress={withdraw}
-            />
+              <View
+                className={`mt-5 flex-row items-center rounded-2xl border-[1.5px] px-4 ${
+                  amountError
+                    ? "border-[#E0575B] bg-[#FEF3F3]"
+                    : "border-[#E9E2F0] bg-[#F7F4FB]"
+                }`}
+              >
+                <Text className="text-[24px] font-JakartaExtraBold text-[#746A7E]">R</Text>
+                <TextInput
+                  value={amount}
+                  onChangeText={(v) => setAmount(v.replace(/[^0-9]/g, ""))}
+                  placeholder="0"
+                  placeholderTextColor={ui.faint}
+                  keyboardType="number-pad"
+                  autoFocus
+                  className="ml-2 h-[62px] flex-1 text-[24px] font-JakartaExtraBold text-[#21152F]"
+                />
+                <Pressable
+                  onPress={() => setAmount(String(Math.floor(available)))}
+                  className="rounded-full bg-[#F0E6FA] px-3 py-1.5 active:opacity-70"
+                >
+                  <Text className="text-[12px] font-JakartaBold text-[#5A189A]">All</Text>
+                </Pressable>
+              </View>
+
+              {!!amountError && (
+                <View className="mt-2 flex-row items-center gap-1.5">
+                  <Ionicons name="alert-circle-outline" size={14} color="#E0575B" />
+                  <Text className="text-[12px] font-JakartaMedium text-[#E0575B]">
+                    {amountError}
+                  </Text>
+                </View>
+              )}
+
+              {!hasBank && !__DEV__ && (
+                <View className="mt-3 flex-row gap-2 rounded-2xl bg-[#FFF6E5] p-3.5">
+                  <Ionicons name="warning-outline" size={15} color="#D99A1B" />
+                  <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#D99A1B]">
+                    Add a bank account before withdrawing. You&apos;ll find it under
+                    driver verification.
+                  </Text>
+                </View>
+              )}
+
+              <View className="mt-4 flex-row gap-2.5 rounded-2xl border border-[#E9E2F0] p-4">
+                <Ionicons name="time-outline" size={15} color="#5A189A" />
+                <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#746A7E]">
+                  {__DEV__
+                    ? "This test simulation changes the app balance only. No payment is sent."
+                    : "Your request will be reviewed before payout and will appear in your withdrawal history."}
+                </Text>
+              </View>
+
+              <View className="mt-5">
+                <CustomButton
+                  title={
+                    submitting
+                      ? __DEV__
+                        ? "Simulating…"
+                        : "Requesting…"
+                      : __DEV__
+                        ? `Simulate R${requested || 0} withdrawal`
+                        : `Withdraw R${requested || 0}`
+                  }
+                  loading={submitting}
+                  disabled={!canWithdraw}
+                  onPress={withdraw}
+                />
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
