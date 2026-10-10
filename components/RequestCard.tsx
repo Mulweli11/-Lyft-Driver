@@ -115,6 +115,9 @@ const RequestCard = ({ ride, onChanged }: Props) => {
 
     try {
       const token = await getToken();
+      if (!token) {
+        throw new Error("Your driver sign-in has expired. Sign out and sign back in.");
+      }
       // Note the (api) group in the path. A bare /api/... resolves to nothing
       // in expo-router and fails silently.
       await fetchAPI(`/(api)/ride/${rideId}`, {
@@ -147,6 +150,9 @@ const RequestCard = ({ ride, onChanged }: Props) => {
     setBusy(true);
     try {
       const token = await getToken();
+      if (!token) {
+        throw new Error("Your driver sign-in has expired. Sign out and sign back in.");
+      }
       await fetchAPI(`/(api)/ride/${rideId}`, {
         method: "PATCH",
         headers: {

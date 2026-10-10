@@ -8,19 +8,12 @@ export async function requireClerkUser(request: Request) {
   const isLocalDevWithoutServerSecret =
     process.env.NODE_ENV !== "production" && !secretKey && !jwtKey;
 
-  if (!token) {
-    if (isLocalDevWithoutServerSecret) {
+  if (!secretKey && !jwtKey) {
+    if (isLocalDevWithoutServerSecret && !token) {
       return "local-dev-user";
     }
 
-    throw new Response(JSON.stringify({ error: "Authentication required" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  if (!secretKey && !jwtKey) {
-    if (isLocalDevWithoutServerSecret) {
+    if (isLocalDevWithoutServerSecret && token) {
       try {
         const payload = JSON.parse(
           Buffer.from(token.split(".")[1] ?? "", "base64").toString("utf8"),
@@ -30,13 +23,25 @@ export async function requireClerkUser(request: Request) {
           return payload.sub;
         }
       } catch {
-        // Fall through to the safe local stub below so local development still works
-        // without server-side Clerk secret configuration.
+        // Fall through to the local development identity.
       }
 
       return "local-dev-user";
     }
 
+    throw new Response(
+      JSON.stringify({
+        error:
+          "Clerk server authentication is not configured. Set CLERK_SECRET_KEY in the Render environment.",
+      }),
+      {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
+
+  if (!token) {
     throw new Response(JSON.stringify({ error: "Authentication required" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },

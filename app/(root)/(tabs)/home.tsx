@@ -226,6 +226,9 @@ const Home = () => {
 
     try {
       const token = await getToken();
+      if (!token) {
+        throw new Error("Your driver sign-in has expired. Sign out and sign back in.");
+      }
       await fetchAPI(`/(api)/ride/${incomingRequest.ride_id}`, {
         method: "PATCH",
         headers: {
@@ -282,7 +285,10 @@ const Home = () => {
       await loadIncomingRequests();
     } catch (error) {
       console.warn("Unable to respond to incoming ride request", error);
-      Alert.alert("Couldn't update the request", "Please try again in a moment.");
+      Alert.alert(
+        "Couldn't update the request",
+        error instanceof Error ? error.message : "Please try again in a moment.",
+      );
     }
   };
 
