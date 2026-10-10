@@ -103,6 +103,31 @@ Then scan the QR code using the Expo Go app.
 
 ---
 
+## Deploy the API on Render
+
+This repository contains Expo Router API routes in `app/(api)`. For a Render
+Web Service, configure:
+
+- **Root Directory:** leave blank (repository root)
+- **Build Command:** `npm install && npm run build:render`
+- **Start Command:** `npm run start:render`
+- **Health Check Path:** `/health`
+
+The Render build exports only the production API routes. The start command runs
+Expo's production server on Render's `PORT`; do not use `npm start`, which runs
+the Expo development server and does not bind a production HTTP port.
+
+Add the required server-only values from `.env.example` in the Render
+environment settings. Never set secret credentials as `EXPO_PUBLIC_*` or add
+them to Expo `extra`. In particular, `SUPABASE_SERVICE_ROLE_KEY`,
+`CLERK_SECRET_KEY`, Stripe secret keys, and webhook secrets must remain
+server-side.
+
+After deployment, confirm `https://<your-render-service>/health` returns
+`{"status":"ok","service":"Lyft Driver API"}`.
+
+---
+
 # Application Flow
 
 ```text
