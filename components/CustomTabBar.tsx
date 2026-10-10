@@ -57,7 +57,9 @@ function TabButton({
   onLongPress: () => void;
 }) {
   const [width] = useState(() => new Animated.Value(44));
-  const activeWidth = 48 + item.label.length * 6 + 16;
+
+  // Width is driven by the *visible* label (respects descriptors override).
+  const activeWidth = 48 + label.length * 6 + 16;
 
   useEffect(() => {
     Animated.spring(width, {
@@ -115,7 +117,9 @@ export default function CustomTabBar({
           if (!item) return null;
 
           const focused = state.index === index;
-          const label = descriptors[route.key].options.title ?? item.label;
+          const label =
+            (descriptors[route.key]?.options?.title as string | undefined) ??
+            item.label;
 
           return (
             <TabButton

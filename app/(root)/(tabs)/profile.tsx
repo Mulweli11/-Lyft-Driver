@@ -874,11 +874,21 @@ const Profile = () => {
               />
             </View>
 
-            {/* SUPPORT */}
+            {/* ── DRIVER SUPPORT ─────────────────────────────────────────
+                Now includes the new chatbot entry point.
+                - Help & Support  → opens driver chat hub (topics + chat)
+                - WhatsApp / Email → existing direct channels
+            ─────────────────────────────────────────────────────────── */}
             <Text className="mb-3 text-[17px] font-JakartaExtraBold text-[#21152F]">
               Driver Support
             </Text>
             <View className="mb-7">
+              <SectionCard
+                title="Help & Support"
+                value="Chat with Hop On Driver Support or browse topics"
+                icon="chatbubbles-outline"
+                onPress={() => router.push("/(root)/driver-help-support")}
+              />
               <SectionCard
                 title="WhatsApp Driver Line"
                 value="Direct support via WhatsApp"
