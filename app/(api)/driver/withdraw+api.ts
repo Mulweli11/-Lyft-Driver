@@ -4,14 +4,22 @@ const MIN_WITHDRAWAL = 50;
 const COMMISSION = 0.1;
 const CLEARING_HOURS = 24;
 
+type Method = "bank" | "voucher" | "cash";
+
 export async function POST(request: Request) {
   try {
-    const { clerkId, amount } = await request.json();
+    const { clerkId, amount, method } = (await request.json()) as {
+      clerkId: string;
+      amount: number;
+      method: Method;
+    };
+
     const requested = Number(amount);
 
-    if (!clerkId || !Number.isFinite(requested)) {
+    if (!clerkId || !Number.isFinite(requested) || !method) {
       return Response.json({ error: "Missing required fields" }, { status: 400 });
     }
+
     if (requested < MIN_WITHDRAWAL) {
       return Response.json(
         { error: `Minimum withdrawal is R${MIN_WITHDRAWAL}` },
@@ -30,7 +38,8 @@ export async function POST(request: Request) {
     if (userError) throw userError;
 
     const bank = userRow?.profile_data?.bank_account;
-    if (!bank?.last4) {
+
+    if (method === "bank" && !bank?.last4) {
       return Response.json(
         { error: "Add a bank account before withdrawing" },
         { status: 400 },
@@ -86,21 +95,33 @@ export async function POST(request: Request) {
       );
     }
 
+    // Voucher / cash withdrawals get a reference code the driver shows
+    // at a partner store. Bank transfers don't need one.
+    const code =
+      method === "voucher"
+        ? `VCH-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+        : method === "cash"
+          ? `CASH-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+          : null;
+
     const { data, error } = await supabase
       .from("payouts")
       .insert({
         driver_id: driver.id,
         amount: requested,
         status: "pending",
-        bank_last4: bank.last4,
+        method,
+        bank_last4: method === "bank" ? bank?.last4 ?? null : null,
+        reference_code: code,
       })
       .select()
       .single();
 
     if (error) throw error;
 
-    // In production this is where a Stripe/Paystack transfer would be created.
-    // For the project, payouts stay "pending" until marked paid by an admin.
+    // In production this is where a Stripe/Paystack transfer or voucher
+    // provider call would happen. For now, payouts stay "pending" until
+    // marked paid by an admin.
 
     return Response.json({ data }, { status: 201 });
   } catch (error) {

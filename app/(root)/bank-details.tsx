@@ -17,12 +17,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import CustomButton from "@/components/CustomButton";
 import OptionSheet from "@/components/OptionSheet";
-import { brand, ui } from "@/constants/theme";
+import { ui } from "@/constants/theme";
 import { fetchAPI } from "@/lib/fetch";
 
 const BANKS = [
-  "ABSA", "Capitec", "FNB", "Nedbank", "Standard Bank",
-  "TymeBank", "African Bank", "Discovery Bank", "Investec", "Bidvest Bank",
+  "ABSA",
+  "Capitec",
+  "FNB",
+  "Nedbank",
+  "Standard Bank",
+  "TymeBank",
+  "African Bank",
+  "Discovery Bank",
+  "Investec",
+  "Bidvest Bank",
 ].map((b) => ({ value: b, label: b }));
 
 const ACCOUNT_TYPES = [
@@ -96,11 +104,16 @@ const BankDetails = () => {
         }),
       });
 
-      Alert.alert("Bank account saved", "Your payouts will go to this account.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
+      Alert.alert(
+        "Bank account saved",
+        "Your payouts will go to this account.",
+        [{ text: "OK", onPress: () => router.back() }],
+      );
     } catch (error) {
-      Alert.alert("Couldn't save", "Please check your connection and try again.");
+      Alert.alert(
+        "Couldn't save",
+        "Please check your connection and try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -210,7 +223,8 @@ const BankDetails = () => {
               <Ionicons name="lock-closed-outline" size={16} color="#5A189A" />
               <Text className="flex-1 text-[11.5px] font-Jakarta leading-4 text-[#746A7E]">
                 We store only the last four digits of your account number. Full
-                details are captured by the payment provider when payouts go live.
+                details are captured by the payment provider when payouts go
+                live.
               </Text>
             </View>
 
