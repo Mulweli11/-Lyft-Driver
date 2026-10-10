@@ -113,6 +113,9 @@ Web Service, configure:
 - **Start Command:** `npm run start:render`
 - **Health Check Path:** `/health`
 
+The driver app sends its API requests to `https://lyft-driver.onrender.com`;
+this origin is configured in `lib/fetch.ts` and is not a `.env` variable.
+
 The Render build exports only the production API routes. The start command runs
 Expo's production server on Render's `PORT`; do not use `npm start`, which runs
 the Expo development server and does not bind a production HTTP port.
